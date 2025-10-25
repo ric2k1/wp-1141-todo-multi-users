@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { mockSession } from '@/lib/auth'
+import { getCurrentSession } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
-    // For now, we'll use mock auth - in production this would check real session
-    const session = mockSession
+    // Check authentication (mock session for now)
+    const session = await getCurrentSession()
+    if (!session) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
 
     // Get all todos and extract unique tags
     const todos = await prisma.todo.findMany({

@@ -1,15 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { updateTodoSchema, todoIdSchema } from '@/lib/validators'
-import { mockSession } from '@/lib/auth'
+import { getCurrentSession } from '@/lib/auth'
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    // For now, we'll use mock auth - in production this would check real session
-    const session = mockSession
+    // Check authentication (mock session for now)
+    const session = await getCurrentSession()
+    if (!session) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
 
     // Validate the ID parameter
     const { id } = todoIdSchema.parse({ id: params.id })
@@ -58,8 +64,14 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    // For now, we'll use mock auth - in production this would check real session
-    const session = mockSession
+    // Check authentication (mock session for now)
+    const session = await getCurrentSession()
+    if (!session) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
 
     // Validate the ID parameter
     const { id } = todoIdSchema.parse({ id: params.id })
