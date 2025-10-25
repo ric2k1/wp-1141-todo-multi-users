@@ -40,4 +40,42 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# prisma
 /src/generated/prisma
+
+# build artifacts
+.next/
+.swc/
+
+# IDE/Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# test artifacts
+coverage/
+.nyc_output/
+
+# temporary files
+*.tmp
+*.temp
+*.log
+
+# database
+*.db
+*.sqlite
+*.sqlite3
+
+# misc
+test-api.js

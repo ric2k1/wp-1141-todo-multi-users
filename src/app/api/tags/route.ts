@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentSession } from '@/lib/auth'
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Check authentication (mock session for now)
     const session = await getCurrentSession()
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Flatten all tags and get unique ones
-    const allTags = todos.flatMap(todo => todo.tags)
+    const allTags = todos.flatMap((todo: { tags: string[] }) => todo.tags)
     const uniqueTags = Array.from(new Set(allTags)).sort()
 
     return NextResponse.json(uniqueTags)

@@ -18,7 +18,7 @@ describe('FilterSection Component', () => {
       />
     )
 
-    expect(screen.getByText('Filter by tags:')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Filter by tags')).toBeInTheDocument()
     expect(screen.getByText('work')).toBeInTheDocument()
     expect(screen.getByText('home')).toBeInTheDocument()
     expect(screen.getByText('done')).toBeInTheDocument()
@@ -78,5 +78,60 @@ describe('FilterSection Component', () => {
 
     const clearButton = screen.getByText('clear (0)')
     expect(clearButton).toBeDisabled()
+  })
+
+  it('allows adding tags via input field', () => {
+    const mockOnFiltersChange = jest.fn()
+    render(
+      <FilterSection
+        filters={{ tags: [], done: null }}
+        onFiltersChange={mockOnFiltersChange}
+        onClearDeleted={jest.fn()}
+        deletedCount={0}
+      />
+    )
+
+    const tagInput = screen.getByPlaceholderText('Filter by tags')
+    fireEvent.change(tagInput, { target: { value: 'newtag' } })
+    fireEvent.keyDown(tagInput, { key: 'Enter' })
+
+    expect(mockOnFiltersChange).toHaveBeenCalledWith({
+      tags: ['newtag'],
+      done: null,
+    })
+  })
+
+  it('toggles done filter correctly', () => {
+    const mockOnFiltersChange = jest.fn()
+    render(
+      <FilterSection
+        filters={{ tags: [], done: null }}
+        onFiltersChange={mockOnFiltersChange}
+        onClearDeleted={jest.fn()}
+        deletedCount={0}
+      />
+    )
+
+    const doneCheckbox = screen.getByLabelText('done')
+    fireEvent.click(doneCheckbox)
+
+    expect(mockOnFiltersChange).toHaveBeenCalledWith({
+      tags: [],
+      done: true,
+    })
+  })
+
+  it('shows done checkbox as checked when done filter is true', () => {
+    render(
+      <FilterSection
+        filters={{ tags: [], done: true }}
+        onFiltersChange={jest.fn()}
+        onClearDeleted={jest.fn()}
+        deletedCount={0}
+      />
+    )
+
+    const doneCheckbox = screen.getByLabelText('done')
+    expect(doneCheckbox).toBeChecked()
   })
 })

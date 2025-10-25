@@ -1,8 +1,8 @@
 import NextAuth, { NextAuthConfig } from "next-auth"
-import Google from "next-auth/providers/google"
-import GitHub from "next-auth/providers/github"
-import Facebook from "next-auth/providers/facebook"
-import { prisma } from "./prisma"
+// import Google from "next-auth/providers/google"
+// import GitHub from "next-auth/providers/github"
+// import Facebook from "next-auth/providers/facebook"
+// import { prisma } from "./prisma"
 
 export const authConfig: NextAuthConfig = {
   providers: [
@@ -42,8 +42,10 @@ export const authConfig: NextAuthConfig = {
         session.user.email = token.email as string
         session.user.image = token.image as string
         // Add provider info for future use
-        session.provider = token.provider as string
-        session.providerId = token.providerId as string
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (session as any).provider = token.provider as string
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (session as any).providerId = token.providerId as string
       }
       return session
     },

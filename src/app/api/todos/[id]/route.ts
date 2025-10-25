@@ -3,9 +3,31 @@ import { prisma } from '@/lib/prisma'
 import { updateTodoSchema, todoIdSchema } from '@/lib/validators'
 import { getCurrentSession } from '@/lib/auth'
 
+// Function to clean up unused tags
+async function cleanupUnusedTags() {
+  try {
+    // Get all unique tags from all todos
+    const todos = await prisma.todo.findMany({
+      select: { tags: true }
+    })
+    
+    const allUsedTags = new Set<string>()
+    todos.forEach(todo => {
+      todo.tags.forEach(tag => allUsedTags.add(tag))
+    })
+    
+    // Note: This is a placeholder - in a real implementation, you might have
+    // a separate tags table that needs to be cleaned up
+    return allUsedTags
+  } catch (error) {
+    console.error('Error cleaning up unused tags:', error)
+    return new Set<string>()
+  }
+}
+
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Check authentication (mock session for now)
@@ -17,8 +39,9 @@ export async function PUT(
       )
     }
 
-    // Validate the ID parameter
-    const { id } = todoIdSchema.parse({ id: params.id })
+    // Await params and validate the ID parameter
+    const resolvedParams = await params
+    const { id } = todoIdSchema.parse({ id: resolvedParams.id })
 
     const body = await request.json()
     const validatedData = updateTodoSchema.parse(body)
@@ -43,6 +66,9 @@ export async function PUT(
       }
     })
 
+    // Clean up unused tags after update (in case tags were removed)
+    await cleanupUnusedTags()
+
     return NextResponse.json(todo)
   } catch (error) {
     console.error('Error updating todo:', error)
@@ -61,7 +87,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Check authentication (mock session for now)
@@ -73,8 +99,9 @@ export async function DELETE(
       )
     }
 
-    // Validate the ID parameter
-    const { id } = todoIdSchema.parse({ id: params.id })
+    // Await params and validate the ID parameter
+    const resolvedParams = await params
+    const { id } = todoIdSchema.parse({ id: resolvedParams.id })
 
     // Check if todo exists
     const existingTodo = await prisma.todo.findUnique({
@@ -91,6 +118,9 @@ export async function DELETE(
     await prisma.todo.delete({
       where: { id }
     })
+
+    // Clean up unused tags after deletion
+    await cleanupUnusedTags()
 
     return NextResponse.json({ success: true })
   } catch (error) {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import AddTodo from '@/components/AddTodo'
 import TodoList from '@/components/TodoList'
 import FilterSection from '@/components/FilterSection'
@@ -16,30 +16,61 @@ export default function Home() {
   })
 
   // Fetch todos from API
-  const fetchTodos = async () => {
+  const fetchTodos = useCallback(async () => {
     try {
+      // Don't send tags to backend - filter on frontend for case-insensitive matching
       const params = new URLSearchParams()
-      if (filters.tags.length > 0) {
-        params.append('tags', filters.tags.join(','))
-      }
       if (filters.done !== null) {
         params.append('done', filters.done.toString())
       }
 
       const response = await fetch(`/api/todos?${params.toString()}`)
       const data = await response.json()
-      setTodos(data)
+      
+      // Apply case-insensitive tag filtering on frontend
+      let filteredData = data
+      if (filters.tags.length > 0) {
+        filteredData = data.filter((todo: Todo) => {
+          return filters.tags.some(filterTag => 
+            todo.tags.some(todoTag => 
+              todoTag.toLowerCase() === filterTag.toLowerCase()
+            )
+          )
+        })
+      }
+      
+      // Apply case-insensitive done filtering
+      if (filters.done !== null) {
+        filteredData = filteredData.filter((todo: Todo) => {
+          return filters.done === null || todo.completed === filters.done
+        })
+      }
+      
+      // Preserve markedForDeletion state when updating todos
+      setTodos(prevTodos => {
+        // Merge new data with preserved markedForDeletion state
+        const updatedTodos = filteredData.map((todo: Todo) => {
+          // Find the existing todo to preserve markedForDeletion state
+          const existingTodo = prevTodos.find(t => t.id === todo.id)
+          return {
+            ...todo,
+            markedForDeletion: existingTodo?.markedForDeletion ?? false
+          }
+        })
+        
+        return updatedTodos
+      })
     } catch (error) {
       console.error('Error fetching todos:', error)
     } finally {
       setLoading(false)
     }
-  }
+  }, [filters])
 
   // Load todos when filters change
   useEffect(() => {
     fetchTodos()
-  }, [filters])
+  }, [fetchTodos])
 
   // Handle adding a new todo
   const handleAddTodo = async (todoData: CreateTodoData) => {

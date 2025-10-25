@@ -44,15 +44,21 @@ export default function AddTodo({ onAddTodo, onUpdateTodo, editingTodo, onCancel
   // Load editing todo data
   useEffect(() => {
     if (editingTodo) {
-      setTitle(editingTodo.title)
-      setDescription(editingTodo.description || '')
-      setTags(editingTodo.tags)
+      // Use setTimeout to avoid synchronous state updates in effect
+      setTimeout(() => {
+        setTitle(editingTodo.title)
+        setDescription(editingTodo.description || '')
+        setTags(editingTodo.tags)
+        setTagInput('')
+      }, 0)
     } else {
-      setTitle('')
-      setDescription('')
-      setTags([])
+      setTimeout(() => {
+        setTitle('')
+        setDescription('')
+        setTags([])
+        setTagInput('')
+      }, 0)
     }
-    setTagInput('')
   }, [editingTodo])
 
   // Fetch tag suggestions
@@ -69,17 +75,28 @@ export default function AddTodo({ onAddTodo, onUpdateTodo, editingTodo, onCancel
     fetchSuggestions()
   }, [])
 
-  // Filter suggestions based on input
-  const filteredSuggestions = suggestions.filter(tag => 
-    tag.toLowerCase().includes(tagInput.toLowerCase()) && 
-    !tags.includes(tag)
-  )
+  // Filter suggestions based on input (case-insensitive)
+  const filteredSuggestions = suggestions.filter(tag => {
+    const matchesInput = tag.toLowerCase().includes(tagInput.toLowerCase())
+    // Check case-insensitively if tag is already added
+    const alreadyAdded = tags.some(existingTag => 
+      existingTag.toLowerCase() === tag.toLowerCase()
+    )
+    return matchesInput && !alreadyAdded
+  })
 
   const handleAddTag = (tag: string) => {
-    if (tag.trim() && !tags.includes(tag.trim())) {
-      setTags([...tags, tag.trim()])
-      setTagInput('')
-      setShowSuggestions(false)
+    const trimmedTag = tag.trim()
+    if (trimmedTag) {
+      // Check case-insensitively if tag already exists
+      const tagExists = tags.some(existingTag => 
+        existingTag.toLowerCase() === trimmedTag.toLowerCase()
+      )
+      if (!tagExists) {
+        setTags([...tags, trimmedTag])
+        setTagInput('')
+        setShowSuggestions(false)
+      }
     }
   }
 
@@ -183,30 +200,40 @@ export default function AddTodo({ onAddTodo, onUpdateTodo, editingTodo, onCancel
       />
       
       <div className="relative">
-        <div className="flex flex-wrap mb-2">
-          {tags.map((tag) => (
-            <TagChip key={tag} tag={tag} onRemove={() => handleRemoveTag(tag)} />
-          ))}
+        <div className="flex items-center gap-2 mb-2">
+          {/* Compact tag input */}
+          <input
+            ref={tagInputRef}
+            type="text"
+            value={tagInput}
+            onChange={(e) => {
+              setTagInput(e.target.value)
+              setShowSuggestions(e.target.value.length > 0) // Only show when typing
+            }}
+            onKeyDown={handleTagInputKeyDown}
+            onFocus={() => setShowSuggestions(tagInput.length > 0)} // Only show if there's input
+            placeholder="Add tag..."
+            className="px-2 py-1 border border-gray-300 rounded text-sm w-48 text-left"
+            style={{ 
+              textAlign: 'left',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}
+          />
+          
+          {/* Existing tags as removable chips */}
+          <div className="flex flex-wrap gap-1">
+            {tags.map((tag) => (
+              <TagChip key={tag} tag={tag} onRemove={() => handleRemoveTag(tag)} />
+            ))}
+          </div>
         </div>
-        
-        <input
-          ref={tagInputRef}
-          type="text"
-          value={tagInput}
-          onChange={(e) => {
-            setTagInput(e.target.value)
-            setShowSuggestions(e.target.value.length > 0)
-          }}
-          onKeyDown={handleTagInputKeyDown}
-          onFocus={() => setShowSuggestions(tagInput.length > 0)}
-          placeholder="tags"
-          className="input-field w-full"
-        />
         
         {showSuggestions && filteredSuggestions.length > 0 && (
           <div
             ref={suggestionsRef}
-            className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto"
+            className="absolute z-10 w-48 mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto"
           >
             {filteredSuggestions.map((suggestion) => (
               <button

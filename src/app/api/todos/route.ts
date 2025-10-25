@@ -19,7 +19,10 @@ export async function GET(request: NextRequest) {
     const done = searchParams.get('done')
 
     // Build where clause for filtering
-    const where: any = {}
+    const where: {
+      tags?: { hasSome: string[] }
+      completed?: boolean
+    } = {}
     
     // Filter by tags (OR logic - any todo that has any of the specified tags)
     if (tags.length > 0) {
@@ -30,7 +33,12 @@ export async function GET(request: NextRequest) {
 
     // Filter by completion status
     if (done !== null && done !== undefined) {
-      where.completed = done === 'true'
+      if (done === 'true') {
+        where.completed = true
+      } else if (done === 'false') {
+        where.completed = false
+      }
+      // If done is null, don't add any completion filter (show all)
     }
 
     const todos = await prisma.todo.findMany({

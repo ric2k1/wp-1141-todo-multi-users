@@ -25,7 +25,7 @@ A collaborative todo application built with Next.js 14+, TypeScript, PostgreSQL,
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - PostgreSQL database
 - yarn
 
