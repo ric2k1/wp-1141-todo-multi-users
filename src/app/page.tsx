@@ -1,18 +1,32 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import AddTodo from '@/components/AddTodo'
-import { Todo, CreateTodoData, UpdateTodoData } from '@/types'
+import TodoList from '@/components/TodoList'
+import FilterSection from '@/components/FilterSection'
+import { Todo, CreateTodoData, UpdateTodoData, TodoFilters } from '@/types'
 
 export default function Home() {
   const [todos, setTodos] = useState<Todo[]>([])
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null)
   const [loading, setLoading] = useState(true)
+  const [filters, setFilters] = useState<TodoFilters>({
+    tags: [],
+    done: null
+  })
 
   // Fetch todos from API
   const fetchTodos = async () => {
     try {
-      const response = await fetch('/api/todos')
+      const params = new URLSearchParams()
+      if (filters.tags.length > 0) {
+        params.append('tags', filters.tags.join(','))
+      }
+      if (filters.done !== null) {
+        params.append('done', filters.done.toString())
+      }
+
+      const response = await fetch(`/api/todos?${params.toString()}`)
       const data = await response.json()
       setTodos(data)
     } catch (error) {
@@ -22,10 +36,10 @@ export default function Home() {
     }
   }
 
-  // Load todos on component mount
+  // Load todos when filters change
   useEffect(() => {
     fetchTodos()
-  }, [])
+  }, [filters])
 
   // Handle adding a new todo
   const handleAddTodo = async (todoData: CreateTodoData) => {
@@ -85,6 +99,52 @@ export default function Home() {
     setEditingTodo(todo)
   }
 
+  // Handle toggle completion
+  const handleToggleComplete = async (id: string) => {
+    const todo = todos.find(t => t.id === id)
+    if (todo) {
+      await handleUpdateTodo(id, { completed: !todo.completed })
+    }
+  }
+
+  // Handle toggle delete (soft delete)
+  const handleToggleDelete = (id: string) => {
+    setTodos(todos.map(todo => 
+      todo.id === id 
+        ? { ...todo, markedForDeletion: !todo.markedForDeletion }
+        : todo
+    ))
+  }
+
+  // Handle tag click to add to filter
+  const handleTagClick = (tag: string) => {
+    if (!filters.tags.includes(tag)) {
+      setFilters({ ...filters, tags: [...filters.tags, tag] })
+    }
+  }
+
+  // Handle clear deleted todos
+  const handleClearDeleted = async () => {
+    const deletedTodos = todos.filter(todo => todo.markedForDeletion)
+    
+    try {
+      // Delete todos from database
+      await Promise.all(
+        deletedTodos.map(todo => 
+          fetch(`/api/todos/${todo.id}`, { method: 'DELETE' })
+        )
+      )
+      
+      // Remove from local state
+      setTodos(todos.filter(todo => !todo.markedForDeletion))
+    } catch (error) {
+      console.error('Error clearing deleted todos:', error)
+    }
+  }
+
+  // Calculate deleted count
+  const deletedCount = todos.filter(todo => todo.markedForDeletion).length
+
   if (loading) {
     return (
       <div className="min-h-screen bg-yellow-50 flex items-center justify-center">
@@ -107,66 +167,20 @@ export default function Home() {
           onCancelEdit={handleCancelEdit}
         />
 
-        <div className="bg-white border border-black rounded-lg p-5">
-          <h2 className="text-lg font-semibold mb-4">Todo List</h2>
-          {todos.length === 0 ? (
-            <p className="text-gray-600">No todos yet. Add your first todo above!</p>
-          ) : (
-            <div className="space-y-2">
-              {todos.map((todo) => (
-                <div
-                  key={todo.id}
-                  className="p-3 border border-gray-200 rounded cursor-pointer hover:bg-gray-50"
-                  onDoubleClick={() => handleEditTodo(todo)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <input
-                        type="checkbox"
-                        checked={todo.completed}
-                        onChange={() => handleUpdateTodo(todo.id, { completed: !todo.completed })}
-                        className="w-4 h-4"
-                      />
-                      <span className={todo.completed ? 'line-through text-gray-500' : 'text-black'}>
-                        {todo.title}
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      {todo.tags.length > 0 && (
-                        <div className="flex space-x-1">
-                          {todo.tags.slice(0, 3).map((tag) => (
-                            <span
-                              key={tag}
-                              className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                          {todo.tags.length > 3 && (
-                            <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
-                              +{todo.tags.length - 3}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                      <button
-                        onClick={() => handleUpdateTodo(todo.id, {})} // Placeholder for delete
-                        className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
-                      >
-                        delete
-                      </button>
-                    </div>
-                  </div>
-                  {todo.description && (
-                    <div className="mt-2 text-sm text-gray-600 ml-7">
-                      {todo.description}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <FilterSection
+          filters={filters}
+          onFiltersChange={setFilters}
+          onClearDeleted={handleClearDeleted}
+          deletedCount={deletedCount}
+        />
+
+        <TodoList
+          todos={todos}
+          onToggleComplete={handleToggleComplete}
+          onToggleDelete={handleToggleDelete}
+          onEdit={handleEditTodo}
+          onTagClick={handleTagClick}
+        />
       </div>
     </div>
   )

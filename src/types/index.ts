@@ -4,6 +4,7 @@ export interface Todo {
   description: string | null
   tags: string[]
   completed: boolean
+  markedForDeletion?: boolean // Client-side only for soft delete
   createdAt: Date
   updatedAt: Date
 }
