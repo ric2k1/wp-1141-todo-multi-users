@@ -17,7 +17,7 @@ interface TagChipProps {
 
 function TagChip({ tag, onRemove }: TagChipProps) {
   return (
-    <span className="inline-flex items-center px-2 py-1 rounded-md bg-gray-100 text-gray-800 text-sm mr-1 mb-1">
+    <span className="tag-chip">
       {tag}
       <button
         type="button"
@@ -156,11 +156,11 @@ export default function AddTodo({ onAddTodo, onUpdateTodo, editingTodo, onCancel
           onChange={(e) => setTitle(e.target.value)}
           onKeyDown={handleTitleKeyDown}
           placeholder="new todo"
-          className="flex-1 px-3 py-2 border border-black rounded text-base"
+          className="input-field flex-1"
         />
         <button
           onClick={handleSubmit}
-          className="px-6 py-2 bg-transparent border border-black rounded text-black cursor-pointer text-base hover:bg-gray-100"
+          className="btn-primary px-6"
         >
           {editingTodo ? 'update' : 'add'}
         </button>
@@ -179,7 +179,7 @@ export default function AddTodo({ onAddTodo, onUpdateTodo, editingTodo, onCancel
         onChange={(e) => setDescription(e.target.value)}
         onKeyDown={handleDescriptionKeyDown}
         placeholder="description"
-        className="w-full px-3 py-2 border border-black rounded text-base resize-y min-h-20 mb-3"
+        className="input-field w-full resize-y min-h-20 mb-3"
       />
       
       <div className="relative">
@@ -200,7 +200,7 @@ export default function AddTodo({ onAddTodo, onUpdateTodo, editingTodo, onCancel
           onKeyDown={handleTagInputKeyDown}
           onFocus={() => setShowSuggestions(tagInput.length > 0)}
           placeholder="tags"
-          className="w-full px-3 py-2 border border-black rounded text-base"
+          className="input-field w-full"
         />
         
         {showSuggestions && filteredSuggestions.length > 0 && (

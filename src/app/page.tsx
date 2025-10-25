@@ -148,7 +148,8 @@ export default function Home() {
   if (loading) {
     return (
       <div className="min-h-screen bg-yellow-50 flex items-center justify-center">
-        <div className="text-lg">Loading todos...</div>
+        <div className="loading-spinner"></div>
+        <div className="ml-3 text-lg">Loading todos...</div>
       </div>
     )
   }

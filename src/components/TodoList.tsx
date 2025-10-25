@@ -43,81 +43,73 @@ function TodoItem({ todo, onToggleComplete, onToggleDelete, onEdit, onTagClick }
   const hasMoreTags = todo.tags.length > 3
 
   return (
-    <div className={`border-b border-gray-200 last:border-b-0 ${todo.markedForDeletion ? 'opacity-50' : ''}`}>
+    <div className={`todo-item ${todo.markedForDeletion ? 'marked-for-deletion' : ''}`}>
       <div
-        className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors ${
-          todo.markedForDeletion ? 'line-through text-gray-500' : ''
-        }`}
+        className="flex items-center justify-between"
         onClick={handleTitleClick}
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3 flex-1 min-w-0">
-            <input
-              type="checkbox"
-              checked={todo.completed}
-              onChange={handleToggleComplete}
-              className="w-4 h-4 flex-shrink-0"
-            />
-            <span
-              className={`flex-1 truncate ${
-                todo.completed ? 'line-through text-gray-500' : 'text-black'
-              }`}
-              title={todo.title} // Tooltip for truncated text
-            >
-              {todo.title}
-            </span>
-          </div>
+        <div className="flex items-center space-x-3 flex-1 min-w-0">
+          <input
+            type="checkbox"
+            checked={todo.completed}
+            onChange={handleToggleComplete}
+            className="w-4 h-4 flex-shrink-0"
+          />
+          <span
+            className={`flex-1 truncate ${
+              todo.completed ? 'line-through text-gray-500' : 'text-black'
+            }`}
+            title={todo.title} // Tooltip for truncated text
+          >
+            {todo.title}
+          </span>
+        </div>
+        
+        <div className="flex items-center space-x-2 flex-shrink-0">
+          {/* Tags */}
+          {todo.tags.length > 0 && (
+            <div className="flex items-center space-x-1">
+              {visibleTags.map((tag) => (
+                <button
+                  key={tag}
+                  onClick={(e) => handleTagClick(tag, e)}
+                  className="tag-chip-clickable"
+                >
+                  {tag}
+                </button>
+              ))}
+              {hasMoreTags && !showAllTags && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setShowAllTags(true)
+                  }}
+                  className="tag-chip-clickable"
+                >
+                  ...
+                </button>
+              )}
+              {hasMoreTags && showAllTags && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setShowAllTags(false)
+                  }}
+                  className="tag-chip-clickable"
+                >
+                  less
+                </button>
+              )}
+            </div>
+          )}
           
-          <div className="flex items-center space-x-2 flex-shrink-0">
-            {/* Tags */}
-            {todo.tags.length > 0 && (
-              <div className="flex items-center space-x-1">
-                {visibleTags.map((tag) => (
-                  <button
-                    key={tag}
-                    onClick={(e) => handleTagClick(tag, e)}
-                    className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs hover:bg-gray-200"
-                  >
-                    {tag}
-                  </button>
-                ))}
-                {hasMoreTags && !showAllTags && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setShowAllTags(true)
-                    }}
-                    className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs hover:bg-gray-200"
-                  >
-                    ...
-                  </button>
-                )}
-                {hasMoreTags && showAllTags && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setShowAllTags(false)
-                    }}
-                    className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs hover:bg-gray-200"
-                  >
-                    less
-                  </button>
-                )}
-              </div>
-            )}
-            
-            {/* Delete button */}
-            <button
-              onClick={handleToggleDelete}
-              className={`px-3 py-1 rounded text-sm font-medium ${
-                todo.markedForDeletion
-                  ? 'bg-gray-500 text-white hover:bg-gray-600'
-                  : 'bg-red-500 text-white hover:bg-red-600'
-              }`}
-            >
-              {todo.markedForDeletion ? 'restore' : 'delete'}
-            </button>
-          </div>
+          {/* Delete button */}
+          <button
+            onClick={handleToggleDelete}
+            className={todo.markedForDeletion ? 'btn-gray' : 'btn-red'}
+          >
+            {todo.markedForDeletion ? 'restore' : 'delete'}
+          </button>
         </div>
       </div>
       

@@ -91,7 +91,7 @@ export default function FilterSection({
         <button
           onClick={handleClearDeleted}
           disabled={deletedCount === 0}
-          className={`px-4 py-2 rounded text-white text-sm font-medium ${
+          className={`px-4 py-2 rounded text-white text-sm font-medium transition-colors duration-200 ${
             deletedCount > 0
               ? 'bg-red-500 hover:bg-red-600 cursor-pointer'
               : 'bg-gray-300 cursor-not-allowed'
@@ -103,8 +103,8 @@ export default function FilterSection({
 
       {/* Confirmation dialog */}
       {showConfirmDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
+        <div className="modal-overlay">
+          <div className="modal-content">
             <h3 className="text-lg font-semibold mb-4">
               Removing {deletedCount} todo items?
             </h3>
@@ -114,7 +114,7 @@ export default function FilterSection({
             <div className="flex space-x-3">
               <button
                 onClick={confirmClear}
-                className="flex-1 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                className="flex-1 btn-red"
               >
                 Yes, Delete All
               </button>
