@@ -184,18 +184,37 @@ To enable OAuth authentication:
 - `npm run build` - Build for production
 - `npm run start` - Start production server
 - `npm run lint` - Run ESLint
+- `npm run test` - Run component tests
+- `npm run test:watch` - Run tests in watch mode
 - `npm run db:generate` - Generate Prisma client
 - `npm run db:migrate` - Run database migrations
 - `npm run db:seed` - Seed database with sample data
 - `npm run db:studio` - Open Prisma Studio
 
 ### Testing
-```bash
-# Run API tests
-node test-api.js
 
+#### Component Tests
+```bash
+# Run React component tests
+npm run test
+
+# Run tests in watch mode
+npm run test:watch
+```
+
+#### API Integration Tests
+```bash
 # Make sure server is running first
 npm run dev
+
+# In another terminal, run API tests
+node __tests__/api.test.js
+```
+
+#### Manual Testing
+```bash
+# Test API endpoints manually
+node test-api.js
 ```
 
 ### Git Tags
