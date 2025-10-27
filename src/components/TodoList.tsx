@@ -29,7 +29,7 @@ function TodoItem({ todo, onToggleComplete, onToggleDelete, onEdit, onTagClick }
     onTagClick(tag)
   }
 
-  const handleToggleComplete = (e: React.MouseEvent) => {
+  const handleToggleComplete = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.stopPropagation()
     onToggleComplete(todo.id)
   }

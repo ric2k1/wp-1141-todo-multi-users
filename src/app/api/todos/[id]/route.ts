@@ -12,8 +12,8 @@ async function cleanupUnusedTags() {
     })
     
     const allUsedTags = new Set<string>()
-    todos.forEach(todo => {
-      todo.tags.forEach(tag => allUsedTags.add(tag))
+    todos.forEach((todo: { tags: string[] }) => {
+      todo.tags.forEach((tag: string) => allUsedTags.add(tag))
     })
     
     // Note: This is a placeholder - in a real implementation, you might have
