@@ -3,39 +3,27 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 async function main() {
-  // Create mock user "ric" for development
-  const mockUser = await prisma.user.upsert({
-    where: { email: 'ric@example.com' },
-    update: {},
-    create: {
-      email: 'ric@example.com',
-      name: 'ric',
-      image: null,
-      provider: 'mock',
-      providerId: 'mock-ric-001',
-    },
-  })
+  // Note: No initial users - users must be added via todo-add-user.sh script
+  console.log('Database seed started - no initial users will be created')
 
-  console.log('Mock user created:', mockUser)
-
-  // Create some sample todos
+  // Create some sample todos (these will be visible once users are added and authenticated)
   const sampleTodos = [
     {
       title: 'Welcome to Todo Multi-Users',
-      description: 'This is a shared todo app where all users can see and manage todos together.',
-      tags: ['welcome', 'ric'],
+      description: 'This is a shared todo app where all users can see and manage todos together. Use ./todo-add-user.sh to add users.',
+      tags: ['welcome', 'admin'],
       completed: false,
     },
     {
-      title: 'Add your first todo',
-      description: 'Click the add button or press Enter to create your first todo item.',
-      tags: ['getting-started', 'ric'],
+      title: 'Add users via command line',
+      description: 'Run "./todo-add-user.sh add <name> <provider>" to add new users who can login via OAuth.',
+      tags: ['getting-started', 'admin'],
       completed: false,
     },
     {
-      title: 'Use tags to organize',
-      description: 'Add tags to categorize your todos. Click on tags to filter the list.',
-      tags: ['tips', 'organization'],
+      title: 'OAuth Authentication Ready',
+      description: 'Users can login with Google, GitHub, or Facebook once they are pre-registered by admin.',
+      tags: ['auth', 'oauth'],
       completed: false,
     },
   ]
@@ -46,7 +34,7 @@ async function main() {
     })
   }
 
-  console.log('Sample todos created')
+  console.log('Sample todos created - ready for OAuth authentication')
 }
 
 main()

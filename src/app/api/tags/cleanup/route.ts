@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getCurrentSession } from '@/lib/auth'
+import { auth } from '@/lib/auth'
 
 export async function POST() {
   try {
-    // Check authentication
-    const session = await getCurrentSession()
-    if (!session) {
+    // Check authentication using request context
+    const session = await auth()
+    if (!session?.user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }

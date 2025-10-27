@@ -32,16 +32,17 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts
 
 # prisma
 /src/generated/prisma
+/node_modules/.prisma/client
 
 # build artifacts
 .next/
@@ -55,7 +56,6 @@ next-env.d.ts
 *~
 
 # OS generated files
-.DS_Store
 .DS_Store?
 ._*
 .Spotlight-V100

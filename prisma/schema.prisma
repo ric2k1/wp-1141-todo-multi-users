@@ -11,15 +11,18 @@ datasource db {
 }
 
 model User {
-  id         String   @id @default(cuid())
-  email      String?  @unique
-  name       String
-  image      String?
-  provider   String?  // google, github, facebook
-  providerId String?
-  createdAt  DateTime @default(now())
+  id          String   @id @default(cuid())
+  alias       String   @unique      // Custom username for login
+  email       String?  
+  oauthName   String?              // Real name from OAuth provider
+  image       String?
+  provider    String               // google, github, facebook
+  oauthId     String               // OAuth provider's user ID
+  isAuthorized Boolean @default(false) // Whether OAuth authorization is complete
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   
-  @@unique([provider, providerId])
+  @@unique([provider, oauthId])
 }
 
 model Todo {

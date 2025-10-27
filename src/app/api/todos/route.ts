@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createTodoSchema } from '@/lib/validators'
-import { getCurrentSession } from '@/lib/auth'
+import { auth } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
-    // Check authentication (mock session for now)
-    const session = await getCurrentSession()
-    if (!session) {
+    // Check authentication using request context
+    const session = await auth()
+    if (!session?.user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -60,9 +60,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication (mock session for now)
-    const session = await getCurrentSession()
-    if (!session) {
+    // Check authentication using request context
+    const session = await auth()
+    if (!session?.user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }

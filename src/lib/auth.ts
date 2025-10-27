@@ -1,51 +1,153 @@
-import NextAuth, { NextAuthConfig } from "next-auth"
-// import Google from "next-auth/providers/google"
-// import GitHub from "next-auth/providers/github"
-// import Facebook from "next-auth/providers/facebook"
-// import { prisma } from "./prisma"
+import NextAuth from "next-auth"
+import Google from "next-auth/providers/google"
+import GitHub from "next-auth/providers/github"
+import Facebook from "next-auth/providers/facebook"
+import { prisma } from "./prisma"
 
-export const authConfig: NextAuthConfig = {
+export const {
+  handlers,
+  auth,
+  signIn,
+  signOut,
+} = NextAuth({
+  trustHost: true,
   providers: [
-    // OAuth providers (commented out for now - will be enabled when credentials are provided)
-    // Google({
-    //   clientId: process.env.GOOGLE_CLIENT_ID!,
-    //   clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    // }),
-    // GitHub({
-    //   clientId: process.env.GITHUB_CLIENT_ID!,
-    //   clientSecret: process.env.GITHUB_CLIENT_SECRET!,
-    // }),
-    // Facebook({
-    //   clientId: process.env.FACEBOOK_CLIENT_ID!,
-    //   clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
-    // }),
+    Google({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
+    GitHub({
+      clientId: process.env.GITHUB_CLIENT_ID!,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+    }),
+    Facebook({
+      clientId: process.env.FACEBOOK_CLIENT_ID!,
+      clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
+      authorization: {
+        params: {
+          scope: 'public_profile', // Remove email scope as it requires special permissions
+        }
+      }
+    }),
   ],
   pages: {
-    signIn: "/login",
+    error: "/auth/error",
   },
   callbacks: {
+    async signIn({ user, account }) {
+      if (!account) return false
+      
+      try {
+        // First, check if user exists with matching provider and OAuth ID (already authorized)
+        let existingUser = await prisma.user.findFirst({
+          where: {
+            provider: account.provider,
+            oauthId: account.providerAccountId,
+            isAuthorized: true,
+          },
+        })
+        
+        if (existingUser) {
+          // Update user info
+          await prisma.user.update({
+            where: { id: existingUser.id },
+            data: {
+              email: user.email,
+              image: user.image,
+              oauthName: user.name,
+            },
+          })
+          console.log(`User ${existingUser.alias} authenticated successfully via ${account.provider}`)
+          return true
+        }
+        
+        // If not found, check for pending authorization (user created by todo-add-user script)
+        const pendingUser = await prisma.user.findFirst({
+          where: {
+            provider: account.provider,
+            isAuthorized: false,
+            oauthId: {
+              startsWith: 'temp-' // Temporary OAuth ID
+            }
+          },
+          orderBy: {
+            createdAt: 'desc' // Get the most recently created pending user
+          }
+        })
+        
+        if (pendingUser) {
+          // Update the pending user with real OAuth ID but DON'T authorize yet
+          // Let the callback-setup API handle the final authorization
+          await prisma.user.update({
+            where: { id: pendingUser.id },
+            data: {
+              oauthId: account.providerAccountId,
+              oauthName: user.name,
+              email: user.email,
+              image: user.image,
+              // isAuthorized remains false - will be set by callback-setup
+            },
+          })
+          console.log(`User ${pendingUser.alias} OAuth info updated, pending final authorization via callback-setup`)
+          return true
+        }
+        
+        console.log(`User with provider ${account.provider} and OAuth ID ${account.providerAccountId} not found or not authorized - access denied`)
+        return false
+      } catch (error) {
+        console.error('Error during sign in:', error)
+        return false
+      }
+    },
     async jwt({ token, user, account }) {
-      if (user) {
-        token.id = user.id
-        token.name = user.name
-        token.email = user.email
-        token.image = user.image
-        token.provider = account?.provider
-        token.providerId = account?.providerAccountId
+      if (user && account) {
+        // Find the user in our database to get our internal ID and alias
+        const dbUser = await prisma.user.findFirst({
+          where: {
+            provider: account.provider,
+            oauthId: account.providerAccountId,
+            isAuthorized: true,
+          },
+        })
+        
+        if (dbUser) {
+          token.id = dbUser.id
+          token.alias = dbUser.alias  // Use alias instead of OAuth name
+          token.email = user.email
+          token.image = user.image
+          token.provider = account.provider
+          token.oauthId = account.providerAccountId
+        }
       }
       return token
     },
     async session({ session, token }) {
-      if (session.user) {
+      if (session.user && token.id) {
+        // Verify user still exists and is authorized in database
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: {
+            id: true,
+            alias: true,
+            isAuthorized: true,
+          }
+        })
+        
+        // If user doesn't exist or is not authorized, invalidate session
+        if (!dbUser || !dbUser.isAuthorized) {
+          console.log(`Session invalidated: user ${token.alias} not found or not authorized`)
+          return { ...session, user: undefined } as any
+        }
+        
         session.user.id = token.id as string
-        session.user.name = token.name as string
+        session.user.name = token.alias as string  // Use alias as display name
         session.user.email = token.email as string
         session.user.image = token.image as string
         // Add provider info for future use
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (session as any).provider = token.provider as string
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (session as any).providerId = token.providerId as string
+        (session as any).providerId = token.oauthId as string
       }
       return session
     },
@@ -54,26 +156,9 @@ export const authConfig: NextAuthConfig = {
     strategy: "jwt",
   },
   secret: process.env.NEXTAUTH_SECRET,
-}
+})
 
-// Mock session for development - bypass OAuth for now
-export const mockSession = {
-  user: {
-    id: "mock-ric-001",
-    name: "ric",
-    email: "ric@example.com",
-    image: null,
-  },
-  provider: "mock",
-  providerId: "mock-ric-001",
-  expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
-}
-
-// Helper function to get current session (mock or real)
+// Helper function to get current session
 export async function getCurrentSession() {
-  // For development, always return mock session
-  // In production, this would check for real session
-  return mockSession
+  return await auth()
 }
-
-export const { handlers, auth, signIn, signOut } = NextAuth(authConfig)
