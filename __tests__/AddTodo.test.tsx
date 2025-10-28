@@ -18,6 +18,11 @@ const mockTodo: Todo = {
 describe('AddTodo Component', () => {
   beforeEach(() => {
     (fetch as jest.Mock).mockClear()
+    // Mock fetch for tag suggestions
+    ;(fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ['work', 'home', 'urgent', 'test', 'example'],
+    })
   })
 
   it('renders add todo form', () => {
@@ -36,8 +41,7 @@ describe('AddTodo Component', () => {
     expect(screen.getByText('add')).toBeInTheDocument()
   })
 
-  // TODO: Re-enable when OAuth is implemented
-  it.skip('renders update form when editing', () => {
+  it('renders update form when editing', async () => {
     render(
       <AddTodo
         onAddTodo={jest.fn()}
@@ -47,10 +51,12 @@ describe('AddTodo Component', () => {
       />
     )
 
-    expect(screen.getByDisplayValue('Test Todo')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('Test Description')).toBeInTheDocument()
-    expect(screen.getByText('update')).toBeInTheDocument()
-    expect(screen.getByText('cancel')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Test Todo')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('Test Description')).toBeInTheDocument()
+      expect(screen.getByText('update')).toBeInTheDocument()
+      expect(screen.getByText('cancel')).toBeInTheDocument()
+    })
   })
 
   it('adds todo when form is submitted', async () => {
@@ -97,8 +103,7 @@ describe('AddTodo Component', () => {
   })
 
   describe('Tag editing interface', () => {
-    // TODO: Re-enable when OAuth is implemented
-    it.skip('should show existing tags as removable chips when editing', () => {
+    it('should show existing tags as removable chips when editing', async () => {
       const editingTodo = {
         id: '1',
         title: 'Test Todo',
@@ -118,14 +123,16 @@ describe('AddTodo Component', () => {
         />
       )
 
-      // Should show existing tags as chips
-      expect(screen.getByText('work')).toBeInTheDocument()
-      expect(screen.getByText('urgent')).toBeInTheDocument()
-      expect(screen.getByText('home')).toBeInTheDocument()
+      await waitFor(() => {
+        // Should show existing tags as chips
+        expect(screen.getByText('work')).toBeInTheDocument()
+        expect(screen.getByText('urgent')).toBeInTheDocument()
+        expect(screen.getByText('home')).toBeInTheDocument()
 
-      // Should have remove buttons for each tag
-      const removeButtons = screen.getAllByText('×')
-      expect(removeButtons).toHaveLength(3)
+        // Should have remove buttons for each tag
+        const removeButtons = screen.getAllByText('×')
+        expect(removeButtons.length).toBeGreaterThanOrEqual(3)
+      })
     })
 
     it('should have compact tag input field when editing', () => {

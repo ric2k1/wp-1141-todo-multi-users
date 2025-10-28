@@ -29,8 +29,7 @@ describe("API Integration Tests", () => {
   });
 
   // Test 3: Create todo
-  // TODO: Re-enable when OAuth is implemented
-  test.skip("POST /api/todos creates todo", async () => {
+  test.skip("POST /api/todos creates todo (requires auth)", async () => {
     const newTodo = {
       title: "API Test Todo",
       description: "Created by API test",
@@ -51,8 +50,7 @@ describe("API Integration Tests", () => {
   });
 
   // Test 4: Update todo
-  // TODO: Re-enable when OAuth is implemented
-  test.skip("PUT /api/todos/[id] updates todo", async () => {
+  test.skip("PUT /api/todos/[id] updates todo (requires auth)", async () => {
     // First create a todo
     const newTodo = {
       title: "Update Test Todo",
@@ -88,8 +86,7 @@ describe("API Integration Tests", () => {
   });
 
   // Test 5: Delete todo
-  // TODO: Re-enable when OAuth is implemented
-  test.skip("DELETE /api/todos/[id] deletes todo", async () => {
+  test.skip("DELETE /api/todos/[id] deletes todo (requires auth)", async () => {
     // First create a todo
     const newTodo = {
       title: "Delete Test Todo",
@@ -140,8 +137,7 @@ describe("API Integration Tests", () => {
   });
 
   // Test 8: Invalid todo creation
-  // TODO: Re-enable when OAuth is implemented
-  test.skip("POST /api/todos validates input", async () => {
+  test.skip("POST /api/todos validates input (requires auth)", async () => {
     const invalidTodo = {
       title: "", // Empty title should fail
       description: "Invalid todo",

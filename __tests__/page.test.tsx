@@ -5,6 +5,22 @@ import { Todo } from '@/types'
 // Mock the API calls
 global.fetch = jest.fn()
 
+// Mock next-auth
+jest.mock('next-auth/react', () => ({
+  useSession: () => ({
+    data: { user: { name: 'Test User' } },
+    status: 'authenticated',
+  }),
+  signOut: jest.fn(),
+}))
+
+// Mock next/navigation
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+  }),
+}))
+
 // Mock todos data
 const mockTodos: Todo[] = [
   {
@@ -65,8 +81,7 @@ describe('Todo App Main Page', () => {
   })
 
   describe('Checkbox click behavior', () => {
-    // TODO: Re-enable when OAuth is implemented
-    it.skip('should toggle completion when checkbox is clicked', async () => {
+    it('should toggle completion when checkbox is clicked', async () => {
       ;(global.fetch as jest.Mock)
         .mockResolvedValueOnce({
           ok: true,
@@ -203,8 +218,7 @@ describe('Todo App Main Page', () => {
   })
 
   describe('Marked for deletion state preservation', () => {
-    // TODO: Re-enable when OAuth is implemented
-    it.skip('should preserve markedForDeletion state when filters change', async () => {
+    it('should preserve markedForDeletion state when filters change', async () => {
       // Initial load with all todos
       ;(global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
@@ -354,8 +368,7 @@ describe('Todo App Main Page', () => {
   })
 
   describe('Tag cleanup functionality', () => {
-    // TODO: Re-enable when OAuth is implemented
-    it.skip('should clean up unused tags when todos are deleted', async () => {
+    it('should clean up unused tags when todos are deleted', async () => {
       // Mock initial todos with tags
       const todosWithTags = [
         { ...mockTodos[0], tags: ['work', 'urgent'] },
