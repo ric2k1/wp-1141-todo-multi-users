@@ -1,5 +1,24 @@
 import "@testing-library/jest-dom";
 
+// Suppress act() warnings in tests
+const originalError = console.error;
+beforeAll(() => {
+  console.error = (...args) => {
+    const message = args[0];
+    if (
+      typeof message === 'string' &&
+      message.includes('not wrapped in act(...)')
+    ) {
+      return;
+    }
+    originalError.call(console, ...args);
+  };
+});
+
+afterAll(() => {
+  console.error = originalError;
+});
+
 // Mock fetch globally
 global.fetch = jest.fn();
 
@@ -15,7 +34,9 @@ const createMockResponse = (data, ok = true) => ({
 global.fetch.mockImplementation((url) => {
   // Mock different responses based on URL
   if (url.includes("/api/tags")) {
-    return Promise.resolve(createMockResponse(["work", "home", "urgent", "test"]));
+    return Promise.resolve(
+      createMockResponse(["work", "home", "urgent", "test"])
+    );
   }
 
   if (url.includes("/api/todos")) {
