@@ -3,53 +3,27 @@ import "@testing-library/jest-dom";
 // Mock fetch globally
 global.fetch = jest.fn();
 
+// Helper to create a mock response
+const createMockResponse = (data, ok = true) => ({
+  ok,
+  json: async () => data,
+  status: ok ? 200 : 400,
+  headers: new Headers(),
+});
+
 // Mock fetch implementation
 global.fetch.mockImplementation((url) => {
-  console.log("Mock fetch called with URL:", url);
-
   // Mock different responses based on URL
   if (url.includes("/api/tags")) {
-    return Promise.resolve({
-      ok: true,
-      json: () => Promise.resolve(["work", "home", "urgent", "test"]),
-    });
+    return Promise.resolve(createMockResponse(["work", "home", "urgent", "test"]));
   }
 
   if (url.includes("/api/todos")) {
-    // For GET requests (no query params), return an array
-    if (!url.includes("?")) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve([]),
-      });
-    }
-
-    // For GET requests with query params, return an array
-    if (url.includes("?")) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve([]),
-      });
-    }
-
-    // For POST/PUT/DELETE requests, return an object
-    return Promise.resolve({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          id: "test-id",
-          title: "Test Todo",
-          description: "Test Description",
-          completed: false,
-          tags: ["test"],
-          success: true,
-        }),
-    });
+    // For all requests to /api/todos, return an empty array by default
+    // Individual tests will override this as needed
+    return Promise.resolve(createMockResponse([]));
   }
 
   // Default response
-  return Promise.resolve({
-    ok: true,
-    json: () => Promise.resolve([]),
-  });
+  return Promise.resolve(createMockResponse({}));
 });
