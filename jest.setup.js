@@ -6,8 +6,8 @@ beforeAll(() => {
   console.error = (...args) => {
     const message = args[0];
     if (
-      typeof message === 'string' &&
-      message.includes('not wrapped in act(...)')
+      typeof message === "string" &&
+      message.includes("not wrapped in act(...)")
     ) {
       return;
     }

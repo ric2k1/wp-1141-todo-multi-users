@@ -28,7 +28,6 @@ describe("API Integration Tests", () => {
     expect(Array.isArray(tags)).toBe(true);
   });
 
-
   // Test 6: Filter by tags
   test("GET /api/todos?tags=test filters by tags", async () => {
     const response = await fetch(`${BASE_URL}/todos?tags=test`);
@@ -51,5 +50,4 @@ describe("API Integration Tests", () => {
       expect(todo.completed).toBe(true);
     });
   });
-
 });
