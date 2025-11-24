@@ -215,18 +215,43 @@ async signIn({ user, account }) {
    git push origin posthog
    ```
 
-2. **檢查 Vercel 環境變數**：
+2. **檢查 Vercel 環境變數**（非常重要）：
 
-   - 確保 `NEXTAUTH_SECRET` 已正確設置
-   - 確保 `NEXTAUTH_URL` 設置為完整的 HTTPS URL（如 `https://your-app.vercel.app`）
+   在 Vercel Dashboard → Settings → Environment Variables 中確認：
 
-3. **清除瀏覽器 Cookie**：
+   - ✅ `NEXTAUTH_SECRET` 已設置（使用 `openssl rand -base64 32` 生成）
+   - ✅ `NEXTAUTH_URL` 設置為完整的 HTTPS URL，**必須包含 `https://` 前綴**
+     - ✅ 正確：`https://todo-multi-users.vercel.app`
+     - ❌ 錯誤：`todo-multi-users.vercel.app`（缺少協議）
+     - ❌ 錯誤：`http://todo-multi-users.vercel.app`（使用 HTTP 而非 HTTPS）
 
-   - 清除與應用相關的所有 cookie
+3. **驗證 Cookie 設定**：
+
+   最新的配置會根據 `NEXTAUTH_URL` 自動判斷是否使用 `secure: true`：
+
+   - 如果 `NEXTAUTH_URL` 以 `https://` 開頭，所有 cookie 都會設置 `secure: true`
+   - 這確保在 Vercel 的 HTTPS 環境中正確工作
+
+4. **清除瀏覽器 Cookie**：
+
+   - 清除與應用相關的所有 cookie（特別是 `next-auth.*` 開頭的 cookie）
    - 使用無痕模式重新測試
+   - 或使用瀏覽器開發者工具 → Application → Cookies 手動清除
 
-4. **查看 Vercel 日誌**：
-   - 如果問題仍然存在，檢查 Vercel 函數日誌以獲取更多詳細信息
+5. **查看 Vercel 日誌**：
+
+   在 Vercel Dashboard → 選擇部署 → Functions 標籤中：
+
+   - 查看 `/api/auth/callback/google` 的日誌
+   - 查找 PKCE 相關的錯誤訊息
+   - 檢查是否有其他認證錯誤
+
+6. **測試 OAuth 流程**：
+
+   - 訪問登入頁面
+   - 點擊 Google 登入
+   - 完成 OAuth 授權
+   - 觀察是否成功重定向回應用
 
 ### 技術細節
 
