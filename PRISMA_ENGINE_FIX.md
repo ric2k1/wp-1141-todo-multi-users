@@ -93,7 +93,29 @@ Running "prisma generate"
 
 构建日志中应该显示生成了多个平台的二进制文件。
 
-### 清理并重新部署
+### 清除 Vercel 构建缓存
+
+如果问题仍然存在，可能是 Vercel 缓存了旧的 `node_modules`：
+
+1. **在 Vercel Dashboard 中清除缓存**：
+
+   - 进入项目设置 → General
+   - 找到 "Clear Build Cache" 或类似选项
+   - 点击清除缓存
+
+2. **或者通过 Vercel CLI**：
+
+   ```bash
+   vercel --force
+   ```
+
+3. **或者在 Vercel Dashboard 中重新部署**：
+   - 进入 Deployments
+   - 找到最新的部署
+   - 点击 "Redeploy"
+   - 选择 "Use existing Build Cache" 为 **否**
+
+### 清理本地并重新部署
 
 如果问题仍然存在：
 
@@ -103,13 +125,26 @@ rm -rf node_modules/.prisma
 rm -rf node_modules/@prisma/client
 
 # 重新生成
-npx prisma generate
+npx prisma generate --schema=./prisma/schema.prisma
+
+# 验证二进制文件已生成
+ls -la node_modules/.prisma/client/libquery_engine-rhel-openssl-3.0.x.so.node
 
 # 提交并推送
 git add .
 git commit -m "Regenerate Prisma Client with binary targets"
 git push
 ```
+
+### 验证 postinstall 脚本
+
+确保 `package.json` 中的 `postinstall` 脚本正确：
+
+```json
+"postinstall": "prisma generate --schema=./prisma/schema.prisma"
+```
+
+这确保在 `yarn install` 后自动生成 Prisma Client。
 
 ## 📚 相关文档
 
