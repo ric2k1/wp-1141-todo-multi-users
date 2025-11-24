@@ -55,8 +55,20 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Error creating user authorization:', error)
+    
+    // In development, return more detailed error information
+    const isDevelopment = process.env.NODE_ENV === 'development'
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorStack = error instanceof Error ? error.stack : undefined
+    
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: 'Internal server error',
+        ...(isDevelopment && {
+          details: errorMessage,
+          stack: errorStack
+        })
+      },
       { status: 500 }
     )
   }

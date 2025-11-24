@@ -13,13 +13,24 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Database URL from .env file
+# Database URL from .env file or environment variable
+# Note: Environment variables set in command line take precedence over .env file
+# Save NEXTAUTH_URL if already set (command line takes precedence)
+SAVED_NEXTAUTH_URL="$NEXTAUTH_URL"
+
 if [ -f .env ]; then
     export $(grep -v '^#' .env | xargs)
 fi
 
+# Restore command line NEXTAUTH_URL if it was set
+if [ -n "$SAVED_NEXTAUTH_URL" ]; then
+    export NEXTAUTH_URL="$SAVED_NEXTAUTH_URL"
+fi
+
 if [ -z "$DATABASE_URL" ]; then
-    echo -e "${RED}Error: DATABASE_URL not found in .env file${NC}"
+    echo -e "${RED}Error: DATABASE_URL not found${NC}"
+    echo -e "${YELLOW}Please set DATABASE_URL as an environment variable or in .env file${NC}"
+    echo -e "${YELLOW}Example: DATABASE_URL='your-db-url' ./todo-add-user.sh <command>${NC}"
     exit 1
 fi
 
@@ -42,6 +53,10 @@ show_usage() {
     echo "  ./todo-add-user.sh add alice github    # User 'alice' will login via GitHub OAuth"
     echo "  ./todo-add-user.sh remove john         # Remove user 'john'"
     echo "  ./todo-add-user.sh list                # Show all users and their authorization status"
+    echo ""
+    echo "For Vercel deployment:"
+    echo "  DATABASE_URL='your-prod-db-url' NEXTAUTH_URL='https://your-app.vercel.app' ./todo-add-user.sh add john google"
+    echo "  See VERCEL_USER_MANAGEMENT.md for more details"
 }
 
 # Function to add user
@@ -65,13 +80,57 @@ add_user() {
     
     # Call the authorization API
     local base_url="${NEXTAUTH_URL:-http://localhost:3000}"
+    
+    # Check if server is reachable (for localhost)
+    if [[ "$base_url" == http://localhost* ]]; then
+        local port=$(echo "$base_url" | sed -E 's|https?://[^:]+:([0-9]+).*|\1|' || echo "3000")
+        
+        # Try to check if port is in use (works on macOS and Linux)
+        if ! lsof -ti:"$port" >/dev/null 2>&1 && ! (command -v nc >/dev/null 2>&1 && nc -z localhost "$port" 2>/dev/null); then
+            echo -e "${RED}Error: Cannot connect to $base_url${NC}"
+            echo -e "${YELLOW}Please make sure:${NC}"
+            echo -e "  1. Development server is running: ${GREEN}yarn dev${NC} or ${GREEN}npm run dev${NC}"
+            echo -e "  2. Or set NEXTAUTH_URL to your Vercel deployment URL:"
+            echo -e "     ${GREEN}NEXTAUTH_URL='https://your-app.vercel.app' ./todo-add-user.sh add $alias $provider${NC}"
+            exit 1
+        fi
+    fi
+    
+    # Make API call and capture both response and exit code
     local response=$(curl -s -w "\n%{http_code}" -X POST "$base_url/api/auth/authorize" \
         -H "Content-Type: application/json" \
-        -d "{\"alias\":\"$alias\",\"provider\":\"$provider\"}")
+        -d "{\"alias\":\"$alias\",\"provider\":\"$provider\"}" \
+        --connect-timeout 5 --max-time 10 2>&1)
+    local curl_exit_code=$?
     
     # Split response body and status code
-    local http_code=$(echo "$response" | tail -n1)
+    local http_code=$(echo "$response" | tail -n1 | tr -d '[:space:]')
     local response_body=$(echo "$response" | sed '$d')
+    
+    # Check if curl failed to connect (exit code 7 = couldn't connect, 28 = timeout)
+    # Also check if http_code is 000 or empty, which indicates connection failure
+    if [ $curl_exit_code -eq 7 ] || [ $curl_exit_code -eq 28 ] || [ "$http_code" = "000" ] || [ -z "$http_code" ]; then
+        echo -e "${RED}Error: Failed to connect to $base_url${NC}"
+        echo -e "${YELLOW}Please check:${NC}"
+        if [[ "$base_url" == http://localhost* ]]; then
+            echo -e "  1. Development server is running: ${GREEN}yarn dev${NC} or ${GREEN}npm run dev${NC}"
+            echo -e "  2. Or use your Vercel deployment URL:"
+            echo -e "     ${GREEN}NEXTAUTH_URL='https://your-app.vercel.app' ./todo-add-user.sh add $alias $provider${NC}"
+        else
+            echo -e "  1. Server is running and accessible at $base_url"
+            echo -e "  2. NEXTAUTH_URL is set correctly"
+        fi
+        exit 1
+    fi
+    
+    # Check for other curl errors
+    if [ $curl_exit_code -ne 0 ]; then
+        echo -e "${RED}Error: Request failed (curl exit code: $curl_exit_code)${NC}"
+        if [ -n "$response_body" ]; then
+            echo -e "${YELLOW}Response: $response_body${NC}"
+        fi
+        exit 1
+    fi
     
     # Check HTTP status code
     if [ "$http_code" != "200" ]; then
