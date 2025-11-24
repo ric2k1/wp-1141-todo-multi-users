@@ -168,12 +168,26 @@ export default function Home() {
       setTodos([newTodo, ...todos]) // Add to beginning (newest first)
       
       // Track todo creation
-      posthog.capture('todo_created', {
-        todo_id: newTodo.id,
-        has_description: !!newTodo.description,
-        tag_count: newTodo.tags?.length || 0,
-        tags: newTodo.tags || [],
-      })
+      try {
+        if (typeof window !== 'undefined') {
+          posthog.capture('todo_created', {
+            todo_id: newTodo.id,
+            has_description: !!newTodo.description,
+            tag_count: newTodo.tags?.length || 0,
+            tags: newTodo.tags || [],
+          })
+          // Debug log in development
+          if (process.env.NODE_ENV === 'development') {
+            console.log('📊 PostHog: todo_created event sent', {
+              todo_id: newTodo.id,
+              tag_count: newTodo.tags?.length || 0,
+              tags: newTodo.tags || [],
+            })
+          }
+        }
+      } catch (error) {
+        console.error('❌ PostHog: Failed to capture todo_created event', error)
+      }
     } catch (error) {
       console.error('Error creating todo:', error)
       throw error

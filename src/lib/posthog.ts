@@ -11,6 +11,10 @@ if (typeof window !== 'undefined') {
       loaded: (posthog) => {
         if (process.env.NODE_ENV === 'development') {
           posthog.debug()
+          console.log('✅ PostHog initialized successfully', {
+            api_host: posthogHost,
+            has_key: !!posthogKey,
+          })
         }
       },
       // Disable autocapture for privacy
@@ -21,7 +25,8 @@ if (typeof window !== 'undefined') {
       capture_pageleave: true,
     })
   } else {
-    console.warn('PostHog key not found. Analytics will not be tracked.')
+    console.warn('⚠️ PostHog key not found. Analytics will not be tracked.')
+    console.warn('Please set NEXT_PUBLIC_POSTHOG_KEY in your environment variables.')
   }
 }
 

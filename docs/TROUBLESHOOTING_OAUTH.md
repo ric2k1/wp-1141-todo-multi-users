@@ -256,3 +256,207 @@ async signIn({ user, account }) {
 ### 技術細節
 
 PKCE 是 OAuth 2.0 的安全擴展，用於防止授權碼攔截攻擊。NextAuth 5 預設啟用 PKCE，code verifier 存儲在加密的 cookie 中。通過明確配置 cookie 選項，可以確保在不同環境中正確處理 PKCE 流程。
+
+---
+
+## 生產環境 OAuth Callback 錯誤診斷
+
+### 問題描述
+
+在 Vercel 生產環境中，OAuth callback (`/api/auth/callback/google`) 可能返回 302 重定向到 `/auth/error`，但沒有顯示完整的錯誤訊息，只有錯誤堆疊。
+
+### 可能原因
+
+1. **環境變數配置問題**：
+
+   - `NEXTAUTH_URL` 未正確設置或格式錯誤
+   - `NEXTAUTH_SECRET` 未設置或與開發環境不一致
+   - OAuth 客戶端 ID/Secret 配置錯誤
+
+2. **Cookie 配置問題**：
+
+   - Cookie 的 `secure` 標誌設置不正確
+   - Cookie 的 `sameSite` 設置導致跨域問題
+   - Cookie 大小超過限制
+
+3. **OAuth 提供者配置問題**：
+
+   - Google OAuth 重新導向 URI 未正確配置
+   - OAuth 客戶端 ID/Secret 與 Vercel 環境變數不一致
+
+4. **NextAuth 配置問題**：
+   - `trustHost` 設置不正確
+   - 其他 NextAuth 配置選項問題
+
+### 診斷步驟
+
+#### 步驟 1：檢查 Vercel 環境變數
+
+在 Vercel Dashboard → Settings → Environment Variables 中確認：
+
+**Production 環境必須設置：**
+
+- ✅ `NEXTAUTH_SECRET`：
+
+  - 必須設置（使用 `openssl rand -base64 32` 生成）
+  - 必須與開發環境不同（生產環境應使用獨立的 secret）
+  - 長度應為 32 字元以上
+
+- ✅ `NEXTAUTH_URL`：
+
+  - 必須設置為完整的 HTTPS URL
+  - ✅ 正確格式：`https://todo-multi-users.vercel.app`
+  - ❌ 錯誤格式：`todo-multi-users.vercel.app`（缺少協議）
+  - ❌ 錯誤格式：`http://todo-multi-users.vercel.app`（使用 HTTP）
+  - ❌ 錯誤格式：`https://todo-multi-users.vercel.app/`（尾隨斜線）
+
+- ✅ OAuth 客戶端配置：
+  - `GOOGLE_CLIENT_ID` 必須設置
+  - `GOOGLE_CLIENT_SECRET` 必須設置
+  - 確保這些值與 Google Cloud Console 中的配置一致
+
+#### 步驟 2：檢查 Google Cloud Console 配置
+
+1. 訪問 [Google Cloud Console](https://console.cloud.google.com/)
+2. 選擇您的專案
+3. 進入 **APIs & Services** → **Credentials**
+4. 找到用於生產環境的 OAuth 2.0 客戶端 ID
+5. 點擊編輯（鉛筆圖示）
+6. **檢查「已授權的重新導向 URI」清單**，確保包含：
+   ```
+   https://todo-multi-users.vercel.app/api/auth/callback/google
+   ```
+7. 如果缺少，點擊 **+ 新增 URI**，新增上述 URI
+8. 點擊 **儲存**
+
+#### 步驟 3：檢查 Vercel 部署日誌
+
+在 Vercel Dashboard → 選擇最新的部署 → Functions 標籤中：
+
+1. 查找 `/api/auth/callback/google` 的函數日誌
+2. 查找錯誤訊息，常見的錯誤包括：
+
+   - `InvalidCheck: pkceCodeVerifier value could not be parsed`
+   - `Configuration`
+   - `Verification`
+   - `OAuthCallback`
+   - `redirect_uri_mismatch`
+
+3. 查看完整的錯誤堆疊，尋找具體的錯誤原因
+
+#### 步驟 4：檢查瀏覽器 Cookie
+
+1. 打開瀏覽器開發者工具（F12）
+2. 前往 **Application** → **Cookies**
+3. 選擇 `https://todo-multi-users.vercel.app`
+4. 查找以下 cookie：
+
+   - `next-auth.pkce.code_verifier`
+   - `next-auth.session_token`
+   - `next-auth.callback-url`
+   - `next-auth.csrf_token`
+
+5. 檢查這些 cookie 的屬性：
+
+   - **Secure**：應該為 `true`（在 HTTPS 環境中）
+   - **SameSite**：應該為 `Lax`
+   - **HttpOnly**：應該為 `true`（某些 cookie）
+
+6. 如果發現問題，清除所有 `next-auth.*` 開頭的 cookie，然後重新測試
+
+#### 步驟 5：測試 OAuth 流程
+
+1. **清除瀏覽器狀態**：
+
+   - 清除所有 cookie（或使用無痕模式）
+   - 清除快取
+
+2. **訪問登入頁面**：
+
+   ```
+   https://todo-multi-users.vercel.app/login
+   ```
+
+3. **點擊 Google 登入**：
+
+   - 觀察是否正確重定向到 Google 授權頁面
+   - 完成授權後，觀察是否正確重定向回應用
+
+4. **檢查重定向結果**：
+   - 如果重定向到 `/auth/error`，查看 URL 參數中的 `error` 值
+   - 記錄具體的錯誤類型
+
+#### 步驟 6：驗證 NextAuth 配置
+
+檢查 `src/lib/auth.ts` 中的配置：
+
+1. **確認 `trustHost: true`**：
+
+   ```typescript
+   export const { handlers, auth, signIn, signOut } = NextAuth({
+     trustHost: true, // 必須設置為 true
+     // ...
+   });
+   ```
+
+2. **確認 Cookie 配置**：
+   ```typescript
+   cookies: {
+     pkceCodeVerifier: {
+       options: {
+         secure: process.env.NEXTAUTH_URL?.startsWith('https://') ?? process.env.NODE_ENV === 'production',
+         // ...
+       },
+     },
+     // ...
+   }
+   ```
+
+### 常見錯誤對照表
+
+| 錯誤類型                                                   | 可能原因                | 解決方案                                                                  |
+| ---------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------- |
+| `InvalidCheck: pkceCodeVerifier value could not be parsed` | Cookie 配置問題         | 檢查 `NEXTAUTH_URL` 是否以 `https://` 開頭，確保 cookie `secure` 設置正確 |
+| `Configuration`                                            | NextAuth 配置錯誤       | 檢查 `NEXTAUTH_SECRET` 和 `NEXTAUTH_URL` 是否正確設置                     |
+| `Verification`                                             | OAuth 驗證失敗          | 檢查 OAuth 客戶端 ID/Secret 是否正確，檢查 Google Console 重新導向 URI    |
+| `OAuthCallback`                                            | OAuth callback 處理失敗 | 檢查 `signIn` callback 邏輯，查看資料庫連接是否正常                       |
+| `redirect_uri_mismatch`                                    | 重新導向 URI 不匹配     | 在 Google Cloud Console 中添加正確的重新導向 URI                          |
+| `AccessDenied`                                             | 使用者未授權            | 檢查資料庫中使用者是否存在且 `isAuthorized=true`                          |
+
+### 快速檢查清單
+
+在排查生產環境 OAuth 錯誤時，請確認：
+
+- [ ] `NEXTAUTH_SECRET` 在 Production 環境中已設置
+- [ ] `NEXTAUTH_URL` 在 Production 環境中設置為 `https://todo-multi-users.vercel.app`（無尾隨斜線）
+- [ ] `GOOGLE_CLIENT_ID` 和 `GOOGLE_CLIENT_SECRET` 在 Production 環境中已設置
+- [ ] Google Cloud Console 中已添加 `https://todo-multi-users.vercel.app/api/auth/callback/google` 重新導向 URI
+- [ ] 已清除瀏覽器 cookie 並重新測試
+- [ ] 已查看 Vercel 函數日誌，確認具體錯誤訊息
+- [ ] `src/lib/auth.ts` 中 `trustHost: true` 已設置
+- [ ] Cookie 配置中的 `secure` 選項根據 `NEXTAUTH_URL` 正確設置
+
+### 如果問題仍然存在
+
+1. **查看完整的 Vercel 函數日誌**：
+
+   - 在 Vercel Dashboard 中查看最新的部署日誌
+   - 查找所有與 `/api/auth/callback/google` 相關的錯誤
+   - 記錄完整的錯誤堆疊
+
+2. **檢查資料庫連接**：
+
+   - 確認 `DATABASE_URL` 在 Production 環境中正確設置
+   - 確認資料庫允許 Vercel 的 IP 連接（如果使用 IP 白名單）
+
+3. **測試 Preview 環境**：
+
+   - 如果 Preview 環境正常工作，比較 Preview 和 Production 的環境變數差異
+   - 確保 Production 環境變數與 Preview 環境一致（除了 URL）
+
+4. **聯繫支援**：
+   - 如果以上步驟都無法解決問題，請提供：
+     - 完整的 Vercel 函數日誌
+     - 環境變數配置（隱藏敏感資訊）
+     - 瀏覽器開發者工具的 Network 標籤截圖
+     - 錯誤頁面的 URL（包含 `error` 參數）
