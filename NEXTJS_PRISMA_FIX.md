@@ -14,29 +14,55 @@ Next.js 13+ 使用文件追踪（file tracing）来优化 serverless 函数的�
 
 ## ✅ 解决方案
 
-### 1. 更新 `next.config.ts`
+### 1. 安装 Prisma Next.js 插件
 
-添加 `experimental.outputFileTracingIncludes` 配置，明确告诉 Next.js 包含 Prisma 的二进制文件：
+```bash
+npm install --save-dev @prisma/nextjs-monorepo-workaround-plugin
+```
+
+**注意**：虽然这个插件主要用于 monorepo 环境，但它也可能帮助解决标准项目中的文件追踪问题。
+
+### 2. 更新 `next.config.ts`
+
+添加 `outputFileTracingIncludes` 配置和 Prisma webpack 插件：
 
 ```typescript
 import type { NextConfig } from "next";
-import path from "path";
+import { PrismaPlugin } from '@prisma/nextjs-monorepo-workaround-plugin';
 
 const nextConfig: NextConfig = {
   // 确保 Prisma Query Engine 二进制文件被包含在 Vercel 部署包中
   // 在 Next.js 16+ 中，outputFileTracingIncludes 已从 experimental 移动到顶层
+  // 使用相对路径，并同时包含 API 路由和所有路由
   outputFileTracingIncludes: {
     "/api/**": [
-      path.join(process.cwd(), "node_modules/.prisma/client/**/*"),
-      path.join(process.cwd(), "node_modules/@prisma/client/**/*"),
+      "./node_modules/.prisma/client/**/*",
+      "./node_modules/@prisma/client/**/*",
+    ],
+    "/": [
+      "./node_modules/.prisma/client/**/*",
+      "./node_modules/@prisma/client/**/*",
     ],
   },
+  // 使用 Prisma webpack 插件确保二进制文件被正确处理
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.plugins = [...(config.plugins || []), new PrismaPlugin()];
+    }
+    return config;
+  },
+  // 确保 Prisma 相关包不被 webpack 处理
+  serverComponentsExternalPackages: ['@prisma/client'],
 };
 
 export default nextConfig;
 ```
 
-这个配置确保所有 API 路由（`/api/**`）都包含 Prisma Client 和 Query Engine 二进制文件。
+**重要配置说明**：
+
+- 使用**相对路径** `'./node_modules/...'` 而不是 `path.join(process.cwd(), ...)`
+- 同时包含 `/api/**/*` 和 `/*` 路径，确保所有路由都包含 Prisma 二进制文件
+- 这确保所有 API 路由和页面路由都包含 Prisma Client 和 Query Engine 二进制文件
 
 **重要**：在 Next.js 16.0.0+ 中，`outputFileTracingIncludes` 已经从 `experimental` 移动到顶层配置。如果你使用的是 Next.js 15 或更早版本，请使用 `experimental.outputFileTracingIncludes`。
 

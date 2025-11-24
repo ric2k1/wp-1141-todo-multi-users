@@ -95,15 +95,19 @@ Next.js 13+ 使用文件追踪来优化 serverless 函数大小，需要明确�
 
 ```typescript
 import type { NextConfig } from "next";
-import path from "path";
 
 const nextConfig: NextConfig = {
   // 确保 Prisma Query Engine 二进制文件被包含在 Vercel 部署包中
   // 在 Next.js 16+ 中，outputFileTracingIncludes 已从 experimental 移动到顶层
+  // 使用相对路径，并同时包含 API 路由和所有路由
   outputFileTracingIncludes: {
-    "/api/**": [
-      path.join(process.cwd(), "node_modules/.prisma/client/**/*"),
-      path.join(process.cwd(), "node_modules/@prisma/client/**/*"),
+    "/api/**/*": [
+      "./node_modules/.prisma/client/**/*",
+      "./node_modules/@prisma/client/**/*",
+    ],
+    "/*": [
+      "./node_modules/.prisma/client/**/*",
+      "./node_modules/@prisma/client/**/*",
     ],
   },
 };
@@ -111,7 +115,11 @@ const nextConfig: NextConfig = {
 export default nextConfig;
 ```
 
-**这是关键配置**：没有这个配置，即使生成了二进制文件，Next.js 也不会将它们包含在部署包中。详见 `NEXTJS_PRISMA_FIX.md`。
+**这是关键配置**：
+
+- 使用**相对路径** `'./node_modules/...'` 而不是 `path.join(process.cwd(), ...)`
+- 同时包含 `/api/**/*` 和 `/*` 路径，确保所有路由都包含 Prisma 二进制文件
+- 没有这个配置，即使生成了二进制文件，Next.js 也不会将它们包含在部署包中。详见 `NEXTJS_PRISMA_FIX.md`。
 
 ### 步骤 3: 本地验证
 
