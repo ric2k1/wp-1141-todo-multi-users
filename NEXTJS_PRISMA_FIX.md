@@ -24,13 +24,12 @@ import path from "path";
 
 const nextConfig: NextConfig = {
   // 确保 Prisma Query Engine 二进制文件被包含在 Vercel 部署包中
-  experimental: {
-    outputFileTracingIncludes: {
-      "/api/**": [
-        path.join(process.cwd(), "node_modules/.prisma/client/**/*"),
-        path.join(process.cwd(), "node_modules/@prisma/client/**/*"),
-      ],
-    },
+  // 在 Next.js 16+ 中，outputFileTracingIncludes 已从 experimental 移动到顶层
+  outputFileTracingIncludes: {
+    "/api/**": [
+      path.join(process.cwd(), "node_modules/.prisma/client/**/*"),
+      path.join(process.cwd(), "node_modules/@prisma/client/**/*"),
+    ],
   },
 };
 
@@ -38,6 +37,8 @@ export default nextConfig;
 ```
 
 这个配置确保所有 API 路由（`/api/**`）都包含 Prisma Client 和 Query Engine 二进制文件。
+
+**重要**：在 Next.js 16.0.0+ 中，`outputFileTracingIncludes` 已经从 `experimental` 移动到顶层配置。如果你使用的是 Next.js 15 或更早版本，请使用 `experimental.outputFileTracingIncludes`。
 
 ### 2. 验证配置
 
