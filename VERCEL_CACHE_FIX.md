@@ -89,6 +89,31 @@ generator client {
 }
 ```
 
+#### `next.config.ts`（重要！）
+
+Next.js 13+ 使用文件追踪来优化 serverless 函数大小，需要明确告诉它包含 Prisma 二进制文件：
+
+```typescript
+import type { NextConfig } from "next";
+import path from "path";
+
+const nextConfig: NextConfig = {
+  // 确保 Prisma Query Engine 二进制文件被包含在 Vercel 部署包中
+  experimental: {
+    outputFileTracingIncludes: {
+      "/api/**": [
+        path.join(process.cwd(), "node_modules/.prisma/client/**/*"),
+        path.join(process.cwd(), "node_modules/@prisma/client/**/*"),
+      ],
+    },
+  },
+};
+
+export default nextConfig;
+```
+
+**这是关键配置**：没有这个配置，即使生成了二进制文件，Next.js 也不会将它们包含在部署包中。详见 `NEXTJS_PRISMA_FIX.md`。
+
 ### 步骤 3: 本地验证
 
 在推送之前，本地验证二进制文件已生成：
@@ -116,8 +141,8 @@ ls -la node_modules/.prisma/client/libquery_engine-rhel-openssl-3.0.x.so.node
 ### 步骤 4: 提交并推送
 
 ```bash
-git add prisma/schema.prisma package.json
-git commit -m "Fix Prisma Query Engine - ensure postinstall generates binaries"
+git add prisma/schema.prisma package.json next.config.ts NEXTJS_PRISMA_FIX.md
+git commit -m "Fix Prisma Query Engine - add Next.js outputFileTracingIncludes config"
 git push
 ```
 
