@@ -1,9 +1,9 @@
 'use client'
 
 import { useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 
-export default function SetupCompletePage() {
+function SetupCompleteContent() {
   const searchParams = useSearchParams()
   const [alias, setAlias] = useState<string | null>(null)
 
@@ -41,5 +41,22 @@ export default function SetupCompletePage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function SetupCompletePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-yellow-50 flex items-center justify-center">
+        <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading...</p>
+          </div>
+        </div>
+      </div>
+    }>
+      <SetupCompleteContent />
+    </Suspense>
   )
 }

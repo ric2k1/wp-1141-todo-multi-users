@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, Suspense } from 'react'
 import { signIn } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
 
-export default function AuthStartPage() {
+function AuthStartContent() {
   const searchParams = useSearchParams()
   const provider = searchParams.get('provider')
   const callbackUrl = searchParams.get('callbackUrl')
@@ -26,6 +26,21 @@ export default function AuthStartPage() {
         <p className="text-lg text-gray-700">Redirecting to {provider} authentication...</p>
       </div>
     </div>
+  )
+}
+
+export default function AuthStartPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-yellow-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <AuthStartContent />
+    </Suspense>
   )
 }
 
