@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { getPostHogClient } from '@/lib/posthog-server'
 
 export async function GET(request: NextRequest) {
   try {
@@ -60,8 +61,31 @@ export async function GET(request: NextRequest) {
     
     console.log(`User ${alias} authorization finalized successfully`)
 
+    // Track OAuth callback and authorization completion
+    const posthog = getPostHogClient()
+    if (posthog) {
+      posthog.capture({
+        distinctId: `user_${alias}`,
+        event: 'oauth_callback_received',
+        properties: {
+          alias,
+          provider: pendingUser.provider,
+          success: true,
+        },
+      })
+      
+      posthog.capture({
+        distinctId: `user_${alias}`,
+        event: 'user_authorization_completed',
+        properties: {
+          alias,
+          provider: pendingUser.provider,
+        },
+      })
+    }
+
     // Redirect to success page
-    return NextResponse.redirect(new URL(`/auth/setup-complete?alias=${encodeURIComponent(alias)}`, request.url))
+    return NextResponse.redirect(new URL(`/auth/setup-complete?alias=${encodeURIComponent(alias)}&provider=${encodeURIComponent(pendingUser.provider)}`, request.url))
   } catch (error) {
     console.error('Error in callback setup:', error)
     return NextResponse.redirect(new URL('/auth/error?error=InternalError', request.url))

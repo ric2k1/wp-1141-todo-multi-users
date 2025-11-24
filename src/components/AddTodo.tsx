@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Todo, CreateTodoData, UpdateTodoData } from '@/types'
+import { posthog } from '@/lib/posthog'
 
 interface AddTodoProps {
   onAddTodo: (todo: CreateTodoData) => Promise<void>
@@ -44,6 +45,11 @@ export default function AddTodo({ onAddTodo, onUpdateTodo, editingTodo, onCancel
   // Load editing todo data
   useEffect(() => {
     if (editingTodo) {
+      // Track edit started
+      posthog.capture('todo_edit_started', {
+        todo_id: editingTodo.id,
+      })
+      
       // Use setTimeout to avoid synchronous state updates in effect
       setTimeout(() => {
         setTitle(editingTodo.title)
@@ -93,15 +99,29 @@ export default function AddTodo({ onAddTodo, onUpdateTodo, editingTodo, onCancel
         existingTag.toLowerCase() === trimmedTag.toLowerCase()
       )
       if (!tagExists) {
+        const isFromSuggestion = suggestions.includes(trimmedTag)
         setTags([...tags, trimmedTag])
         setTagInput('')
         setShowSuggestions(false)
+        
+        // Track tag added
+        posthog.capture('tag_added', {
+          tag: trimmedTag,
+          tag_source: isFromSuggestion ? 'suggestion' : 'manual',
+          todo_id: editingTodo?.id,
+        })
       }
     }
   }
 
   const handleRemoveTag = (tagToRemove: string) => {
     setTags(tags.filter(tag => tag !== tagToRemove))
+    
+    // Track tag removed
+    posthog.capture('tag_removed', {
+      tag: tagToRemove,
+      todo_id: editingTodo?.id,
+    })
   }
 
   const handleTagInputKeyDown = (e: React.KeyboardEvent) => {
@@ -157,6 +177,12 @@ export default function AddTodo({ onAddTodo, onUpdateTodo, editingTodo, onCancel
   }
 
   const handleCancel = () => {
+    if (editingTodo) {
+      posthog.capture('todo_edit_cancelled', {
+        todo_id: editingTodo.id,
+      })
+    }
+    
     setTitle('')
     setDescription('')
     setTags([])

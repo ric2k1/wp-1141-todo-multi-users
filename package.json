@@ -20,9 +20,12 @@
     "@prisma/client": "6.18.0",
     "next": "16.0.0",
     "next-auth": "^5.0.0-beta.30",
+    "posthog-js": "^1.298.0",
+    "posthog-node": "^5.14.0",
     "prisma": "^6.18.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
+    "recharts": "^3.5.0",
     "zod": "^4.1.12"
   },
   "devDependencies": {

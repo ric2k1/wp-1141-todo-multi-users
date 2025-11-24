@@ -3,6 +3,7 @@
 import { useEffect, Suspense } from 'react'
 import { signIn } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
+import { posthog } from '@/lib/posthog'
 
 function AuthStartContent() {
   const searchParams = useSearchParams()
@@ -11,6 +12,12 @@ function AuthStartContent() {
 
   useEffect(() => {
     if (provider && callbackUrl) {
+      // Track OAuth redirect
+      posthog.capture('oauth_redirect_started', {
+        provider,
+        callback_url: decodeURIComponent(callbackUrl),
+      })
+      
       // Start OAuth flow
       signIn(provider, {
         callbackUrl: decodeURIComponent(callbackUrl),

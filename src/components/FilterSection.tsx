@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { TodoFilters } from '@/types'
+import { posthog } from '@/lib/posthog'
 
 interface FilterSectionProps {
   filters: TodoFilters
@@ -37,6 +38,21 @@ export default function FilterSection({
     fetchSuggestions()
   }, [])
 
+  // Track filter application
+  useEffect(() => {
+    const hasTags = filters.tags.length > 0
+    const hasDone = filters.done !== null
+    
+    if (hasTags || hasDone) {
+      const filterType = hasTags && hasDone ? 'both' : hasTags ? 'tag' : 'done'
+      posthog.capture('filter_applied', {
+        filter_type: filterType,
+        tag_count: filters.tags.length,
+        show_done_only: filters.done === true,
+      })
+    }
+  }, [filters])
+
   // Filter suggestions based on input (case-insensitive)
   const filteredSuggestions = suggestions.filter(tag => {
     const matchesInput = tag.toLowerCase().includes(tagInput.toLowerCase())
@@ -50,6 +66,11 @@ export default function FilterSection({
   const handleTagRemove = (tagToRemove: string) => {
     const newTags = filters.tags.filter(tag => tag !== tagToRemove)
     onFiltersChange({ ...filters, tags: newTags })
+    
+    // Track filter tag removed
+    posthog.capture('filter_tag_removed', {
+      tag: tagToRemove,
+    })
   }
 
   const handleAddTag = (tag: string) => {
@@ -60,9 +81,16 @@ export default function FilterSection({
         existingTag.toLowerCase() === trimmedTag.toLowerCase()
       )
       if (!tagExists) {
-        onFiltersChange({ ...filters, tags: [...filters.tags, trimmedTag] })
+        const newTags = [...filters.tags, trimmedTag]
+        onFiltersChange({ ...filters, tags: newTags })
         setTagInput('')
         setShowSuggestions(false)
+        
+        // Track filter tag added
+        posthog.capture('filter_tag_added', {
+          tag: trimmedTag,
+          total_filter_tags: newTags.length,
+        })
       }
     }
   }
@@ -81,6 +109,11 @@ export default function FilterSection({
   const handleDoneToggle = () => {
     const newDone = filters.done === null ? true : null
     onFiltersChange({ ...filters, done: newDone })
+    
+    // Track filter done toggle
+    posthog.capture('filter_done_toggled', {
+      show_done_only: newDone === true,
+    })
   }
 
   const handleClearDeleted = () => {

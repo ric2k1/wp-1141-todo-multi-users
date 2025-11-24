@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Todo } from '@/types'
+import { posthog } from '@/lib/posthog'
 
 interface TodoItemProps {
   todo: Todo
@@ -17,7 +18,20 @@ function TodoItem({ todo, onToggleComplete, onToggleDelete, onEdit, onTagClick }
   const [showTooltip, setShowTooltip] = useState(false)
 
   const handleTitleClick = () => {
-    setExpanded(!expanded)
+    const newExpanded = !expanded
+    setExpanded(newExpanded)
+    
+    // Track expand/collapse
+    if (newExpanded) {
+      posthog.capture('todo_expanded', {
+        todo_id: todo.id,
+        has_description: !!todo.description,
+      })
+    } else {
+      posthog.capture('todo_collapsed', {
+        todo_id: todo.id,
+      })
+    }
   }
 
   const handleDoubleClick = () => {
@@ -26,6 +40,13 @@ function TodoItem({ todo, onToggleComplete, onToggleDelete, onEdit, onTagClick }
 
   const handleTagClick = (tag: string, e: React.MouseEvent) => {
     e.stopPropagation()
+    
+    // Track tag click
+    posthog.capture('tag_clicked', {
+      tag,
+      todo_id: todo.id,
+    })
+    
     onTagClick(tag)
   }
 

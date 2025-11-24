@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import AddTodo from '@/components/AddTodo'
 import TodoList from '@/components/TodoList'
 import FilterSection from '@/components/FilterSection'
 import { Todo, CreateTodoData, UpdateTodoData, TodoFilters } from '@/types'
+import { posthog } from '@/lib/posthog'
 
 export default function Home() {
   const { data: session, status } = useSession()
@@ -18,6 +19,7 @@ export default function Home() {
     tags: [],
     done: null
   })
+  const hasIdentifiedUser = useRef(false)
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -26,8 +28,41 @@ export default function Home() {
     }
   }, [status, router])
 
+  // Identify user and track login when session is available
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user && !hasIdentifiedUser.current) {
+      hasIdentifiedUser.current = true
+      
+      // Hash user ID for privacy (simple hash function)
+      const userId = session.user.id || session.user.email || 'unknown'
+      const hashedUserId = btoa(userId).replace(/[^a-zA-Z0-9]/g, '').substring(0, 32)
+      
+      // Identify user in PostHog
+      posthog.identify(hashedUserId, {
+        oauth_provider: (session.user as any).provider || 'unknown',
+        user_alias: (session.user as any).alias || session.user.name || 'unknown',
+      })
+      
+      // Track user logged in
+      posthog.capture('user_logged_in', {
+        user_id: hashedUserId,
+        provider: (session.user as any).provider || 'unknown',
+      })
+    }
+  }, [status, session])
+
   // Handle logout
   const handleLogout = async () => {
+    if (session?.user) {
+      const userId = session.user.id || session.user.email || 'unknown'
+      const hashedUserId = btoa(userId).replace(/[^a-zA-Z0-9]/g, '').substring(0, 32)
+      
+      posthog.capture('user_logged_out', {
+        user_id: hashedUserId,
+      })
+    }
+    
+    hasIdentifiedUser.current = false
     await signOut({
       callbackUrl: '/login',
     })
@@ -131,6 +166,14 @@ export default function Home() {
 
       const newTodo = await response.json()
       setTodos([newTodo, ...todos]) // Add to beginning (newest first)
+      
+      // Track todo creation
+      posthog.capture('todo_created', {
+        todo_id: newTodo.id,
+        has_description: !!newTodo.description,
+        tag_count: newTodo.tags?.length || 0,
+        tags: newTodo.tags || [],
+      })
     } catch (error) {
       console.error('Error creating todo:', error)
       throw error
@@ -161,6 +204,18 @@ export default function Home() {
       setTodos(todos.map(todo => 
         todo.id === id ? updatedTodo : todo
       ))
+      
+      // Track todo update
+      const oldTodo = todos.find(t => t.id === id)
+      const fieldsUpdated: string[] = []
+      if (oldTodo && oldTodo.title !== updatedTodo.title) fieldsUpdated.push('title')
+      if (oldTodo && oldTodo.description !== updatedTodo.description) fieldsUpdated.push('description')
+      if (oldTodo && JSON.stringify(oldTodo.tags) !== JSON.stringify(updatedTodo.tags)) fieldsUpdated.push('tags')
+      
+      posthog.capture('todo_updated', {
+        todo_id: id,
+        fields_updated: fieldsUpdated,
+      })
     } catch (error) {
       console.error('Error updating todo:', error)
       throw error
@@ -181,17 +236,41 @@ export default function Home() {
   const handleToggleComplete = async (id: string) => {
     const todo = todos.find(t => t.id === id)
     if (todo) {
+      const wasCompleted = todo.completed
       await handleUpdateTodo(id, { completed: !todo.completed })
+      
+      // Track completion if marking as completed
+      if (!wasCompleted) {
+        // Calculate time from creation to completion (in seconds)
+        const createdAt = new Date(todo.createdAt).getTime()
+        const completionTime = Math.floor((Date.now() - createdAt) / 1000)
+        
+        posthog.capture('todo_completed', {
+          todo_id: id,
+          completion_time: completionTime,
+          had_tags: (todo.tags?.length || 0) > 0,
+        })
+      }
     }
   }
 
   // Handle toggle delete (soft delete)
   const handleToggleDelete = (id: string) => {
+    const todo = todos.find(t => t.id === id)
+    const wasMarkedForDeletion = todo?.markedForDeletion || false
+    
     setTodos(todos.map(todo => 
       todo.id === id 
         ? { ...todo, markedForDeletion: !todo.markedForDeletion }
         : todo
     ))
+    
+    // Track restore if unmarking for deletion
+    if (wasMarkedForDeletion) {
+      posthog.capture('todo_restored', {
+        todo_id: id,
+      })
+    }
   }
 
   // Handle tag click to add to filter
@@ -217,6 +296,19 @@ export default function Home() {
       })
       
       await Promise.all(deletePromises)
+      
+      // Track deletion of todos
+      deletedTodos.forEach(todo => {
+        posthog.capture('todo_deleted', {
+          todo_id: todo.id,
+          was_completed: todo.completed,
+        })
+      })
+      
+      // Track clear deleted action
+      posthog.capture('deleted_todos_cleared', {
+        deleted_count: deletedTodos.length,
+      })
       
       // Remove from local state
       setTodos(todos.filter(todo => !todo.markedForDeletion))

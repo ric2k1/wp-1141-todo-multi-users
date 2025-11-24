@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { posthog } from '@/lib/posthog'
 
 export default function RegisterPage() {
   const [alias, setAlias] = useState('')
@@ -11,25 +12,45 @@ export default function RegisterPage() {
   const [error, setError] = useState('')
   const router = useRouter()
 
+  // Track when user starts registration (provider selection)
+  useEffect(() => {
+    posthog.capture('registration_started', {
+      provider,
+    })
+  }, [provider])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
     if (!alias.trim()) {
-      setError('请输入用户名')
+      setError('請輸入使用者名稱')
       return
     }
 
     // Validate alias format (alphanumeric and underscore, 3-20 chars)
     const aliasRegex = /^[a-zA-Z0-9_]{3,20}$/
     if (!aliasRegex.test(alias.trim())) {
-      setError('用户名只能包含字母、数字和下划线，长度 3-20 个字符')
+      setError('使用者名稱只能包含字母、數字和底線，長度 3-20 個字元')
       return
     }
 
     setLoading(true)
     setError('')
 
+    // Track form submission
+    posthog.capture('registration_form_submitted', {
+      alias: alias.trim(),
+      provider,
+      alias_length: alias.trim().length,
+    })
+
     try {
+      // Track API call
+      posthog.capture('registration_authorize_api_called', {
+        alias: alias.trim(),
+        provider,
+      })
+
       // Call the authorization API
       const response = await fetch('/api/auth/authorize', {
         method: 'POST',
@@ -45,10 +66,17 @@ export default function RegisterPage() {
       const data = await response.json()
 
       if (!response.ok) {
+        const errorType = response.status === 409 ? 'alias_exists' : response.status >= 500 ? 'server_error' : 'validation_error'
+        posthog.capture('registration_failed', {
+          error_type: errorType,
+          alias: alias.trim(),
+          provider,
+        })
+        
         if (response.status === 409) {
-          setError('该用户名已被使用，请选择其他用户名')
+          setError('該使用者名稱已被使用，請選擇其他使用者名稱')
         } else {
-          setError(data.error || '注册失败，请稍后再试')
+          setError(data.error || '註冊失敗，請稍後再試')
         }
         setLoading(false)
         return
@@ -58,12 +86,12 @@ export default function RegisterPage() {
       if (data.authUrl) {
         window.location.href = data.authUrl
       } else {
-        setError('无法获取授权链接，请稍后再试')
+        setError('無法取得授權連結，請稍後再試')
         setLoading(false)
       }
     } catch (error) {
       console.error('Registration error:', error)
-      setError('发生错误，请稍后再试')
+      setError('發生錯誤，請稍後再試')
       setLoading(false)
     }
   }
@@ -75,13 +103,13 @@ export default function RegisterPage() {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             todo list
           </h1>
-          <p className="text-gray-600">创建新账户</p>
+          <p className="text-gray-600">建立新帳戶</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label htmlFor="alias" className="block text-sm font-medium text-gray-700 mb-2">
-              用户名
+              使用者名稱
             </label>
             <input
               type="text"
@@ -89,19 +117,19 @@ export default function RegisterPage() {
               value={alias}
               onChange={(e) => setAlias(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="输入用户名（3-20 个字符）"
+              placeholder="輸入使用者名稱（3-20 個字元）"
               disabled={loading}
               pattern="[a-zA-Z0-9_]{3,20}"
-              title="用户名只能包含字母、数字和下划线，长度 3-20 个字符"
+              title="使用者名稱只能包含字母、數字和底線，長度 3-20 個字元"
             />
             <p className="mt-1 text-xs text-gray-500">
-              只能包含字母、数字和下划线，长度 3-20 个字符
+              只能包含字母、數字和底線，長度 3-20 個字元
             </p>
           </div>
 
           <div>
             <label htmlFor="provider" className="block text-sm font-medium text-gray-700 mb-2">
-              登录方式
+              登入方式
             </label>
             <select
               id="provider"
@@ -115,7 +143,7 @@ export default function RegisterPage() {
               <option value="facebook">Facebook</option>
             </select>
             <p className="mt-1 text-xs text-gray-500">
-              选择您要使用的 OAuth 登录方式
+              選擇您要使用的 OAuth 登入方式
             </p>
           </div>
 
@@ -130,23 +158,23 @@ export default function RegisterPage() {
             disabled={loading}
             className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? '处理中...' : '注册'}
+            {loading ? '處理中...' : '註冊'}
           </button>
         </form>
 
         <div className="mt-6 pt-4 border-t border-gray-200">
           <p className="text-xs text-gray-500 text-center">
-            已有账户？{' '}
+            已有帳戶？{' '}
             <Link href="/login" className="text-blue-600 hover:text-blue-700 font-medium">
-              立即登录
+              立即登入
             </Link>
           </p>
         </div>
 
         <div className="mt-4 bg-blue-50 border border-blue-200 rounded-md p-3">
           <p className="text-xs text-blue-700">
-            <strong>注意：</strong>注册后，您将被重定向到 {provider === 'google' ? 'Google' : provider === 'github' ? 'GitHub' : 'Facebook'} 进行授权。
-            授权完成后即可使用该账户登录。
+            <strong>注意：</strong>註冊後，您將被重新導向到 {provider === 'google' ? 'Google' : provider === 'github' ? 'GitHub' : 'Facebook'} 進行授權。
+            授權完成後即可使用該帳戶登入。
           </p>
         </div>
       </div>

@@ -1,43 +1,43 @@
-# OAuth 本地开发问题排查指南
+# OAuth 本地開發問題排查指南
 
-## 问题：localhost 登录显示"认证失败，请重试"
+## 問題：localhost 登入顯示「認證失敗，請重試」
 
 ### 可能原因
 
-1. **Google OAuth 重定向 URI 未配置 localhost**（最常见）
-2. **NEXTAUTH_URL 环境变量配置错误**
-3. **OAuth 客户端 ID/Secret 配置问题**
+1. **Google OAuth 重新導向 URI 未設定 localhost**（最常見）
+2. **NEXTAUTH_URL 環境變數設定錯誤**
+3. **OAuth 客戶端 ID/Secret 設定問題**
 
 ---
 
-## 解决方案
+## 解決方案
 
-### 步骤 1：检查 Google Cloud Console 配置
+### 步驟 1：檢查 Google Cloud Console 設定
 
-1. 访问 [Google Cloud Console](https://console.cloud.google.com/)
-2. 选择你的项目
-3. 进入 **APIs & Services** → **Credentials**
-4. 找到你的 OAuth 2.0 客户端 ID（用于 Vercel 部署的那个）
-5. 点击编辑（铅笔图标）
+1. 訪問 [Google Cloud Console](https://console.cloud.google.com/)
+2. 選擇您的專案
+3. 進入 **APIs & Services** → **Credentials**
+4. 找到您的 OAuth 2.0 客戶端 ID（用於 Vercel 部署的那個）
+5. 點擊編輯（鉛筆圖示）
 
-6. **检查"已授权的重定向 URI"列表**，确保包含以下两个 URI：
+6. **檢查「已授權的重新導向 URI」清單**，確保包含以下兩個 URI：
 
    ```
    http://localhost:3000/api/auth/callback/google
    https://your-vercel-domain.com/api/auth/callback/google
    ```
 
-7. 如果缺少 localhost 的 URI，点击 **+ 添加 URI**，添加：
+7. 如果缺少 localhost 的 URI，點擊 **+ 新增 URI**，新增：
 
    ```
    http://localhost:3000/api/auth/callback/google
    ```
 
-8. 点击 **保存**
+8. 點擊 **儲存**
 
-### 步骤 2：检查本地环境变量
+### 步驟 2：檢查本地環境變數
 
-确保你的 `.env` 文件包含以下配置：
+確保您的 `.env` 檔案包含以下設定：
 
 ```env
 NEXTAUTH_URL="http://localhost:3000"
@@ -48,46 +48,46 @@ GOOGLE_CLIENT_SECRET="your-google-client-secret"
 
 **重要提示**：
 
-- `NEXTAUTH_URL` 必须设置为 `http://localhost:3000`（不是 https）
-- 确保 `GOOGLE_CLIENT_ID` 和 `GOOGLE_CLIENT_SECRET` 与 Google Cloud Console 中的一致
+- `NEXTAUTH_URL` 必須設定為 `http://localhost:3000`（不是 https）
+- 確保 `GOOGLE_CLIENT_ID` 和 `GOOGLE_CLIENT_SECRET` 與 Google Cloud Console 中的一致
 
-### 步骤 3：重启开发服务器
+### 步驟 3：重新啟動開發伺服器
 
-修改环境变量或 Google Console 配置后，需要重启开发服务器：
+修改環境變數或 Google Console 設定後，需要重新啟動開發伺服器：
 
 ```bash
-# 停止当前服务器（Ctrl+C）
-# 然后重新启动
+# 停止目前伺服器（Ctrl+C）
+# 然後重新啟動
 yarn dev
 ```
 
-### 步骤 4：清除浏览器缓存和 Cookie
+### 步驟 4：清除瀏覽器快取和 Cookie
 
-1. 清除浏览器缓存
+1. 清除瀏覽器快取
 2. 清除 localhost:3000 的 Cookie
-3. 或者使用无痕模式重新测试
+3. 或使用無痕模式重新測試
 
 ---
 
-## 验证配置
+## 驗證設定
 
-### 检查 1：确认重定向 URI 配置
+### 檢查 1：確認重新導向 URI 設定
 
-在 Google Cloud Console 中，你的 OAuth 客户端应该有以下重定向 URI：
+在 Google Cloud Console 中，您的 OAuth 客戶端應該有以下重新導向 URI：
 
-- ✅ `http://localhost:3000/api/auth/callback/google`（开发环境）
-- ✅ `https://your-vercel-domain.com/api/auth/callback/google`（生产环境）
+- ✅ `http://localhost:3000/api/auth/callback/google`（開發環境）
+- ✅ `https://your-vercel-domain.com/api/auth/callback/google`（生產環境）
 
-### 检查 2：确认环境变量
+### 檢查 2：確認環境變數
 
-运行以下命令检查环境变量是否正确加载：
+執行以下命令檢查環境變數是否正確載入：
 
 ```bash
-# 在项目根目录
+# 在專案根目錄
 cat .env | grep -E "NEXTAUTH_URL|GOOGLE_CLIENT"
 ```
 
-应该看到：
+應該看到：
 
 ```
 NEXTAUTH_URL="http://localhost:3000"
@@ -95,84 +95,84 @@ GOOGLE_CLIENT_ID="your-actual-client-id"
 GOOGLE_CLIENT_SECRET="your-actual-client-secret"
 ```
 
-### 检查 3：查看服务器日志
+### 檢查 3：查看伺服器日誌
 
-启动开发服务器后，尝试登录，查看终端输出的错误信息：
+啟動開發伺服器後，嘗試登入，查看終端輸出的錯誤訊息：
 
 ```bash
 yarn dev
-# 然后尝试登录，观察终端输出
+# 然後嘗試登入，觀察終端輸出
 ```
 
-常见的错误信息：
+常見的錯誤訊息：
 
-- `redirect_uri_mismatch` → 重定向 URI 未配置
-- `invalid_client` → 客户端 ID/Secret 错误
-- `access_denied` → 用户拒绝了授权
-
----
-
-## 常见错误对照表
-
-| 错误信息                | 原因                                  | 解决方案                                                                |
-| ----------------------- | ------------------------------------- | ----------------------------------------------------------------------- |
-| `redirect_uri_mismatch` | 重定向 URI 未在 Google Console 中配置 | 在 Google Console 添加 `http://localhost:3000/api/auth/callback/google` |
-| `invalid_client`        | 客户端 ID 或 Secret 错误              | 检查 `.env` 文件中的 `GOOGLE_CLIENT_ID` 和 `GOOGLE_CLIENT_SECRET`       |
-| `access_denied`         | 用户拒绝了 OAuth 授权                 | 重新登录，确保点击"允许"                                                |
-| `Configuration`         | NextAuth 配置错误                     | 检查 `NEXTAUTH_URL` 和 `NEXTAUTH_SECRET`                                |
-| `Verification`          | OAuth 验证失败                        | 通常是重定向 URI 或环境变量问题                                         |
+- `redirect_uri_mismatch` → 重新導向 URI 未設定
+- `invalid_client` → 客戶端 ID/Secret 錯誤
+- `access_denied` → 使用者拒絕了授權
 
 ---
 
-## 如果问题仍然存在
+## 常見錯誤對照表
 
-### 选项 1：创建单独的开发环境 OAuth 应用
+| 錯誤訊息                | 原因                                    | 解決方案                                                                |
+| ----------------------- | --------------------------------------- | ----------------------------------------------------------------------- |
+| `redirect_uri_mismatch` | 重新導向 URI 未在 Google Console 中設定 | 在 Google Console 新增 `http://localhost:3000/api/auth/callback/google` |
+| `invalid_client`        | 客戶端 ID 或 Secret 錯誤                | 檢查 `.env` 檔案中的 `GOOGLE_CLIENT_ID` 和 `GOOGLE_CLIENT_SECRET`       |
+| `access_denied`         | 使用者拒絕了 OAuth 授權                 | 重新登入，確保點擊「允許」                                              |
+| `Configuration`         | NextAuth 設定錯誤                       | 檢查 `NEXTAUTH_URL` 和 `NEXTAUTH_SECRET`                                |
+| `Verification`          | OAuth 驗證失敗                          | 通常是重新導向 URI 或環境變數問題                                       |
 
-如果不想修改生产环境的 OAuth 配置，可以创建一个新的 OAuth 客户端专门用于开发：
+---
 
-1. 在 Google Cloud Console 创建新的 OAuth 2.0 客户端 ID
-2. 只添加 localhost 的重定向 URI
-3. 在本地 `.env` 文件中使用新的客户端 ID 和 Secret
-4. 生产环境继续使用原来的客户端 ID 和 Secret
+## 如果問題仍然存在
 
-### 选项 2：检查数据库中的用户记录
+### 選項 1：建立單獨的開發環境 OAuth 應用
 
-确保用户 "ric" 在数据库中存在且已授权：
+如果不想修改生產環境的 OAuth 設定，可以建立一個新的 OAuth 客戶端專門用於開發：
+
+1. 在 Google Cloud Console 建立新的 OAuth 2.0 客戶端 ID
+2. 只新增 localhost 的重新導向 URI
+3. 在本地 `.env` 檔案中使用新的客戶端 ID 和 Secret
+4. 生產環境繼續使用原來的客戶端 ID 和 Secret
+
+### 選項 2：檢查資料庫中的使用者記錄
+
+確保使用者 "ric" 在資料庫中存在且已授權：
 
 ```bash
 # 使用 Prisma Studio 查看
 yarn db:studio
 
-# 或者使用脚本查看
+# 或使用腳本查看
 ./todo-add-user.sh list
 ```
 
-确保：
+確保：
 
-- 用户存在
-- `provider` 字段为 `google`
-- `isAuthorized` 字段为 `true`
+- 使用者存在
+- `provider` 欄位為 `google`
+- `isAuthorized` 欄位為 `true`
 
-### 选项 3：查看详细错误日志
+### 選項 3：查看詳細錯誤日誌
 
-在 `src/lib/auth.ts` 的 `signIn` callback 中添加更多日志：
+在 `src/lib/auth.ts` 的 `signIn` callback 中新增更多日誌：
 
 ```typescript
 async signIn({ user, account }) {
   console.log('SignIn callback:', { user, account })
-  // ... 现有代码
+  // ... 現有程式碼
 }
 ```
 
 ---
 
-## 快速检查清单
+## 快速檢查清單
 
-- [ ] Google Cloud Console 中已添加 `http://localhost:3000/api/auth/callback/google` 重定向 URI
-- [ ] `.env` 文件中 `NEXTAUTH_URL="http://localhost:3000"`
-- [ ] `.env` 文件中 `GOOGLE_CLIENT_ID` 和 `GOOGLE_CLIENT_SECRET` 正确
-- [ ] 已重启开发服务器
-- [ ] 已清除浏览器缓存和 Cookie
-- [ ] 数据库中存在用户 "ric" 且 `isAuthorized=true`
+- [ ] Google Cloud Console 中已新增 `http://localhost:3000/api/auth/callback/google` 重新導向 URI
+- [ ] `.env` 檔案中 `NEXTAUTH_URL="http://localhost:3000"`
+- [ ] `.env` 檔案中 `GOOGLE_CLIENT_ID` 和 `GOOGLE_CLIENT_SECRET` 正確
+- [ ] 已重新啟動開發伺服器
+- [ ] 已清除瀏覽器快取和 Cookie
+- [ ] 資料庫中存在使用者 "ric" 且 `isAuthorized=true`
 
-完成以上所有步骤后，问题应该就能解决了。
+完成以上所有步驟後，問題應該就能解決了。

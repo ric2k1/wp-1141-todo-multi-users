@@ -2,13 +2,26 @@
 
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useState, Suspense } from 'react'
+import { posthog } from '@/lib/posthog'
 
 function SetupCompleteContent() {
   const searchParams = useSearchParams()
   const [alias, setAlias] = useState<string | null>(null)
+  const [provider, setProvider] = useState<string | null>(null)
 
   useEffect(() => {
-    setAlias(searchParams.get('alias'))
+    const aliasParam = searchParams.get('alias')
+    const providerParam = searchParams.get('provider')
+    setAlias(aliasParam)
+    setProvider(providerParam)
+    
+    // Track registration completion
+    if (aliasParam) {
+      posthog.capture('registration_completed', {
+        alias: aliasParam,
+        provider: providerParam || 'unknown',
+      })
+    }
   }, [searchParams])
 
   return (
