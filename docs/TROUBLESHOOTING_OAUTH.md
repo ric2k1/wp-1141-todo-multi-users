@@ -114,13 +114,14 @@ yarn dev
 
 ## 常見錯誤對照表
 
-| 錯誤訊息                | 原因                                    | 解決方案                                                                |
-| ----------------------- | --------------------------------------- | ----------------------------------------------------------------------- |
-| `redirect_uri_mismatch` | 重新導向 URI 未在 Google Console 中設定 | 在 Google Console 新增 `http://localhost:3000/api/auth/callback/google` |
-| `invalid_client`        | 客戶端 ID 或 Secret 錯誤                | 檢查 `.env` 檔案中的 `GOOGLE_CLIENT_ID` 和 `GOOGLE_CLIENT_SECRET`       |
-| `access_denied`         | 使用者拒絕了 OAuth 授權                 | 重新登入，確保點擊「允許」                                              |
-| `Configuration`         | NextAuth 設定錯誤                       | 檢查 `NEXTAUTH_URL` 和 `NEXTAUTH_SECRET`                                |
-| `Verification`          | OAuth 驗證失敗                          | 通常是重新導向 URI 或環境變數問題                                       |
+| 錯誤訊息                                                   | 原因                                    | 解決方案                                                                |
+| ---------------------------------------------------------- | --------------------------------------- | ----------------------------------------------------------------------- |
+| `redirect_uri_mismatch`                                    | 重新導向 URI 未在 Google Console 中設定 | 在 Google Console 新增 `http://localhost:3000/api/auth/callback/google` |
+| `invalid_client`                                           | 客戶端 ID 或 Secret 錯誤                | 檢查 `.env` 檔案中的 `GOOGLE_CLIENT_ID` 和 `GOOGLE_CLIENT_SECRET`       |
+| `access_denied`                                            | 使用者拒絕了 OAuth 授權                 | 重新登入，確保點擊「允許」                                              |
+| `Configuration`                                            | NextAuth 設定錯誤                       | 檢查 `NEXTAUTH_URL` 和 `NEXTAUTH_SECRET`                                |
+| `Verification`                                             | OAuth 驗證失敗                          | 通常是重新導向 URI 或環境變數問題                                       |
+| `InvalidCheck: pkceCodeVerifier value could not be parsed` | PKCE code verifier cookie 無法解析      | 已在 `src/lib/auth.ts` 中配置 cookie 設定，確保部署最新版本             |
 
 ---
 
@@ -176,3 +177,57 @@ async signIn({ user, account }) {
 - [ ] 資料庫中存在使用者 "ric" 且 `isAuthorized=true`
 
 完成以上所有步驟後，問題應該就能解決了。
+
+---
+
+## PKCE 錯誤：`InvalidCheck: pkceCodeVerifier value could not be parsed`
+
+### 問題描述
+
+在 Vercel 部署環境中，可能會遇到以下錯誤：
+
+```
+[auth][error] InvalidCheck: pkceCodeVerifier value could not be parsed
+```
+
+這是 NextAuth 5 的 PKCE (Proof Key for Code Exchange) 驗證問題，通常發生在生產環境。
+
+### 原因
+
+1. **Cookie 配置問題**：PKCE code verifier 存儲在 cookie 中，如果 cookie 配置不正確，可能無法正確解析
+2. **Cookie 大小限制**：某些環境下 cookie 可能超過大小限制
+3. **環境差異**：開發環境和生產環境的 cookie 設定不一致
+
+### 解決方案
+
+已在 `src/lib/auth.ts` 中添加了完整的 cookie 配置，包括：
+
+- `pkceCodeVerifier` cookie 的明確設定
+- 適當的 `httpOnly`、`sameSite`、`secure` 設定
+- 15 分鐘的過期時間（`maxAge: 900`）
+
+### 驗證修復
+
+1. **確保已部署最新版本**：
+
+   ```bash
+   git pull origin posthog
+   git push origin posthog
+   ```
+
+2. **檢查 Vercel 環境變數**：
+
+   - 確保 `NEXTAUTH_SECRET` 已正確設置
+   - 確保 `NEXTAUTH_URL` 設置為完整的 HTTPS URL（如 `https://your-app.vercel.app`）
+
+3. **清除瀏覽器 Cookie**：
+
+   - 清除與應用相關的所有 cookie
+   - 使用無痕模式重新測試
+
+4. **查看 Vercel 日誌**：
+   - 如果問題仍然存在，檢查 Vercel 函數日誌以獲取更多詳細信息
+
+### 技術細節
+
+PKCE 是 OAuth 2.0 的安全擴展，用於防止授權碼攔截攻擊。NextAuth 5 預設啟用 PKCE，code verifier 存儲在加密的 cookie 中。通過明確配置 cookie 選項，可以確保在不同環境中正確處理 PKCE 流程。
