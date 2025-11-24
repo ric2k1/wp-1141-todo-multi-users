@@ -1,14 +1,20 @@
-import { auth } from "@/lib/auth"
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 
-export default auth((req) => {
+export default function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
-  const isLoggedIn = !!req.auth
   
   // Allow access to API auth routes
   if (pathname.startsWith('/api/auth/')) {
     return NextResponse.next()
   }
+  
+  // Check for NextAuth session cookie
+  // NextAuth v5 uses __Secure-authjs.session-token or authjs.session-token
+  const sessionToken = req.cookies.get('__Secure-authjs.session-token') || 
+                       req.cookies.get('authjs.session-token') ||
+                       req.cookies.get('__Host-authjs.session-token')
+  
+  const isLoggedIn = !!sessionToken
   
   // If user is not authenticated and trying to access protected routes
   if (!isLoggedIn && pathname !== '/login') {
@@ -21,7 +27,7 @@ export default auth((req) => {
   }
 
   return NextResponse.next()
-})
+}
 
 // Configure which paths the middleware should run on
 export const config = {
