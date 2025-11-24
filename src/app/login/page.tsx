@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 export default function LoginPage() {
   const [username, setUsername] = useState('')
@@ -14,7 +15,7 @@ export default function LoginPage() {
     e.preventDefault()
     
     if (!username.trim()) {
-      setError('Please enter your username')
+      setError('请输入用户名')
       return
     }
 
@@ -35,9 +36,9 @@ export default function LoginPage() {
 
       if (!response.ok) {
         if (response.status === 404) {
-          setError('User not found. Please contact admin to register your account.')
+          setError('用户不存在。请先注册账户。')
         } else {
-          setError(data.error || 'Failed to lookup user')
+          setError(data.error || '查找用户失败')
         }
         setLoading(false)
         return
@@ -50,7 +51,7 @@ export default function LoginPage() {
       })
 
       if (result?.error) {
-        setError('Authentication failed. Please try again.')
+        setError('认证失败，请重试')
         setLoading(false)
       } else if (result?.url) {
         // Redirect to OAuth provider
@@ -58,7 +59,7 @@ export default function LoginPage() {
       }
     } catch (error) {
       console.error('Login error:', error)
-      setError('Something went wrong. Please try again.')
+      setError('发生错误，请重试')
       setLoading(false)
     }
   }
@@ -80,7 +81,7 @@ export default function LoginPage() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Enter your username"
+              placeholder="输入用户名"
               disabled={loading}
             />
           </div>
@@ -96,13 +97,16 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Looking up user...' : 'Login'}
+            {loading ? '查找用户中...' : '登录'}
           </button>
         </form>
 
         <div className="mt-6 pt-4 border-t border-gray-200">
           <p className="text-xs text-gray-500 text-center">
-            Don't have an account? Contact your administrator to register.
+            还没有账户？{' '}
+            <Link href="/register" className="text-blue-600 hover:text-blue-700 font-medium">
+              立即注册
+            </Link>
           </p>
         </div>
       </div>
