@@ -320,18 +320,46 @@ export default function Home() {
       
       await Promise.all(deletePromises)
       
-      // Track deletion of todos
-      deletedTodos.forEach(todo => {
-        posthog.capture('todo_deleted', {
-          todo_id: todo.id,
-          was_completed: todo.completed,
-        })
+      console.log('🔍 Debug: About to track todo deletion events', {
+        deleted_count: deletedTodos.length,
+        has_window: typeof window !== 'undefined',
+        has_posthog: typeof posthog !== 'undefined',
       })
       
+      // Track deletion of todos
+      try {
+        if (typeof window !== 'undefined' && typeof posthog !== 'undefined') {
+          deletedTodos.forEach(todo => {
+            const eventData = {
+              todo_id: todo.id,
+              was_completed: todo.completed,
+            }
+            console.log('📤 Sending todo_deleted event to PostHog', eventData)
+            posthog.capture('todo_deleted', eventData)
+          })
+          console.log(`✅ PostHog: ${deletedTodos.length} todo_deleted events sent successfully`)
+        } else {
+          console.warn('⚠️ PostHog is not available. Deletion events will not be tracked.')
+        }
+      } catch (error) {
+        console.error('❌ PostHog: Failed to capture todo_deleted events', error)
+      }
+      
       // Track clear deleted action
-      posthog.capture('deleted_todos_cleared', {
-        deleted_count: deletedTodos.length,
-      })
+      try {
+        if (typeof window !== 'undefined' && typeof posthog !== 'undefined') {
+          const clearEventData = {
+            deleted_count: deletedTodos.length,
+          }
+          console.log('📤 Sending deleted_todos_cleared event to PostHog', clearEventData)
+          posthog.capture('deleted_todos_cleared', clearEventData)
+          console.log('✅ PostHog: deleted_todos_cleared event sent successfully', clearEventData)
+        } else {
+          console.warn('⚠️ PostHog is not available. Clear event will not be tracked.')
+        }
+      } catch (error) {
+        console.error('❌ PostHog: Failed to capture deleted_todos_cleared event', error)
+      }
       
       // Remove from local state
       setTodos(todos.filter(todo => !todo.markedForDeletion))
