@@ -33,7 +33,7 @@ describe('PostHogProvider', () => {
     expect(getByText('Test Content')).toBeInTheDocument()
   })
 
-  it('tracks pageview on mount', () => {
+  it('tracks pageview on mount', async () => {
     ;(usePathname as jest.Mock).mockReturnValue('/test-page')
     ;(useSearchParams as jest.Mock).mockReturnValue(new URLSearchParams())
 
@@ -43,12 +43,15 @@ describe('PostHogProvider', () => {
       </PostHogProvider>
     )
 
+    // Wait for Suspense to resolve
+    await new Promise(resolve => setTimeout(resolve, 0))
+
     expect(posthog.capture).toHaveBeenCalledWith('$pageview', {
       $current_url: expect.stringContaining('/test-page'),
     })
   })
 
-  it('tracks pageview with query params', () => {
+  it('tracks pageview with query params', async () => {
     ;(usePathname as jest.Mock).mockReturnValue('/test')
     ;(useSearchParams as jest.Mock).mockReturnValue(
       new URLSearchParams('?param=value')
@@ -59,6 +62,9 @@ describe('PostHogProvider', () => {
         <div>Test</div>
       </PostHogProvider>
     )
+
+    // Wait for Suspense to resolve
+    await new Promise(resolve => setTimeout(resolve, 0))
 
     expect(posthog.capture).toHaveBeenCalledWith('$pageview', {
       $current_url: expect.stringContaining('/test?param=value'),
