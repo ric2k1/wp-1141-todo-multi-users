@@ -56,7 +56,7 @@ show_usage() {
     echo ""
     echo "For Vercel deployment:"
     echo "  DATABASE_URL='your-prod-db-url' NEXTAUTH_URL='https://your-app.vercel.app' ./todo-add-user.sh add john google"
-    echo "  See VERCEL_USER_MANAGEMENT.md for more details"
+    echo "  See docs/VERCEL_USER_MANAGEMENT.md for more details"
 }
 
 # Function to add user
