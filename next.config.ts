@@ -23,7 +23,9 @@ const nextConfig: NextConfig = {
       path.join(process.cwd(), 'node_modules/.prisma/client/libquery_engine-rhel-openssl-3.0.x.so.node'),
     ],
   },
-  // 使用 Prisma webpack 插件确保二进制文件被正确处理
+  // 禁用 Turbopack，使用 webpack（因为 PrismaPlugin 需要 webpack）
+  // 在 Next.js 16 中，Turbopack 是默认的，但我们需要 webpack 来使用 PrismaPlugin
+  // 注意：在 package.json 的 vercel-build 脚本中也添加了 --webpack 标志
   webpack: (config, { isServer }) => {
     if (isServer) {
       config.plugins = [...(config.plugins || []), new PrismaPlugin()];
