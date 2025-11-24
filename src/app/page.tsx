@@ -168,22 +168,31 @@ export default function Home() {
       setTodos([newTodo, ...todos]) // Add to beginning (newest first)
       
       // Track todo creation
+      console.log('🔍 Debug: About to track todo_created event', {
+        has_window: typeof window !== 'undefined',
+        has_posthog: typeof posthog !== 'undefined',
+        node_env: process.env.NODE_ENV,
+        todo_id: newTodo.id,
+      })
+      
       try {
         if (typeof window !== 'undefined') {
-          posthog.capture('todo_created', {
-            todo_id: newTodo.id,
-            has_description: !!newTodo.description,
-            tag_count: newTodo.tags?.length || 0,
-            tags: newTodo.tags || [],
-          })
-          // Debug log in development
-          if (process.env.NODE_ENV === 'development') {
-            console.log('📊 PostHog: todo_created event sent', {
+          if (typeof posthog === 'undefined') {
+            console.warn('⚠️ PostHog is not available. Event will not be tracked.')
+          } else {
+            const eventData = {
               todo_id: newTodo.id,
+              has_description: !!newTodo.description,
               tag_count: newTodo.tags?.length || 0,
               tags: newTodo.tags || [],
-            })
+            }
+            
+            console.log('📤 Sending todo_created event to PostHog', eventData)
+            posthog.capture('todo_created', eventData)
+            console.log('✅ PostHog: todo_created event sent successfully', eventData)
           }
+        } else {
+          console.warn('⚠️ Window is not available. Event will not be tracked.')
         }
       } catch (error) {
         console.error('❌ PostHog: Failed to capture todo_created event', error)
